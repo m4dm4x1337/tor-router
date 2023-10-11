@@ -1,0 +1,157 @@
+tor_router_up() {
+
+  tor_router_include tr-pre-up.d
+
+  sysctl_up
+
+  routing_up
+
+  ipset_up
+
+  iptables_up
+
+  torrc_up
+
+  tor_router_include tr-post-up.d
+
+}
+
+tor_router_down() {
+
+  tor_router_include tr-pre-down.d
+
+  iptables_down
+
+  ipset_down
+
+  routing_down
+
+  sysctl_down
+
+  tor_router_include tr-post-down.d
+
+}
+
+tor_router_include() { # $1 = plugin dir
+
+  local file=
+
+  if [ -d "/etc/tor-router/$1/" ]; then
+    for file in "/etc/tor-router/$1/"*; do
+      if [ -x "$file" ] && [ $(stat -c %U "$file") = "root" ]; then
+
+#       . "$file" 2>&1 | sed "s/^.*$/\x1b[1;30m[${file##*/}]\x1b[0m \0/" >&2 ||
+#         echo "[WARNING] sourcing file '$1' has failed" >&2
+
+        mkfifo /var/run/tor-router/tor-router.fifo
+
+        sed "s/^.*$/\x1b[1;30m[${file##*/}]\x1b[0m \0/" \
+          /var/run/tor-router/tor-router.fifo >&2 &
+
+        if ! . "$file" > /var/run/tor-router/tor-router.fifo 2>&1; then
+          echo "[WARNING] sourcing file '$1' has failed" >&2
+        fi
+
+        rm /var/run/tor-router/tor-router.fifo
+
+      fi
+    done
+  fi
+
+}
+
+get_dports() {
+  get_ports "${DPORTS:-80,443}"
+}
+
+get_lports() {
+  get_ports "${LPORTS:-22}"
+}
+
+get_blacklist() { # $1=inet (4/6)
+  get_networks "${BLACKLIST:-@AUTO}" \
+    "$1" get_auto_blacklist
+}
+
+get_whitelist() { # $1=inet (4/6)
+  get_networks "${WHITELIST:-@AUTO}" \
+    "$1" get_auto_whitelist
+}
+
+get_virtual_addr4() {
+  if [ "${VIRTUAL_ADDR4:-@AUTO}" = "@AUTO" ]; then
+    if tor_router_has_ipv4_forwarding_enabled; then
+      echo 10.192.0.0/10  # tor recommend this
+    else
+      echo 127.192.0.0/10 # tor recommend this
+    fi
+  else
+    echo $VIRTUAL_ADDR4
+  fi
+}
+
+get_virtual_addr6() {
+  if [ "${VIRTUAL_ADDR6:-@AUTO}" = "@AUTO" ]; then
+    if tor_router_has_ipv6_forwarding_enabled; then
+      echo fcc0::/16 # tor recommend fc00::/7, but it's too big and overlaps with fd00::/8 (Private IPv6 addresses)
+    else
+      echo fcc0::/16 # tor recommend fe80::/10, but it's not routable and connections only work if you specify the interface explicitly "fe80::1%lo"
+    fi
+  else
+    echo $VIRTUAL_ADDR6
+  fi
+}
+
+tor_router_has_ipv4_support_enabled() {
+  return 0 # true, ipv4 support is enabled
+}
+
+tor_router_has_ipv6_support_enabled() {
+  kernel_has_ipv6_support &&
+    tor_router_has_option_enabled "${ENABLE_IPV6:-no}" \
+      kernel_has_ipv6_enabled
+}
+
+tor_router_has_ipv6_preference_enabled() {
+  tor_router_has_ipv6_support_enabled &&
+    tor_router_has_option_enabled "${PREFER_IPV6:-no}"
+}
+
+tor_router_has_connection_logging_enabled() {
+  tor_router_has_option_enabled "${CONNECTION_LOG:-no}"
+}
+
+tor_router_has_reject_logging_enabled() {
+  tor_router_has_option_enabled "${REJECT_LOG:-no}"
+}
+
+tor_router_has_verbose_logging_enabled() {
+  tor_router_has_option_enabled "${VERBOSE:-no}"
+}
+
+tor_router_has_ipv4_forwarding_enabled() {
+  tor_router_has_ip_forwarding_enabled 4
+}
+
+tor_router_has_ipv6_forwarding_enabled() {
+  tor_router_has_ip_forwarding_enabled 6
+}
+
+tor_router_has_ip_forwarding_enabled() { # $1=inet (4/6)
+  tor_router_has_option_enabled "${ROUTER:-no}" \
+    "kernel_has_forwarding_enabled $1"
+}
+
+tor_router_has_option_enabled() { # $1=input $2=callback
+
+  case "${1:-no}" in
+    [Tt][Rr][Uu][Ee]| \
+    [Yy][Ee][Ss]| \
+    [Oo][Nn]| \
+    [1-9]) return 0 ;;          # true
+    @AUTO) [ -n "$2" ] && $2 ;; # callback
+        *) return 1 ;;          # false
+  esac
+
+}
+

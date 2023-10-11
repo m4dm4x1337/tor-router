@@ -1,0 +1,6 @@
+# Root-owned executable files in /etc/tor-router/tr-pre-up.d/ 
+# are sourced before the firewall rules are added.
+
+# echo "Hello World from $0"
+# env | sort
+

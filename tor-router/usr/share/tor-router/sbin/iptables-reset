@@ -1,0 +1,127 @@
+#!/bin/sh
+
+# Tor-Router (iptables/ipset reset script)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -e
+
+SCRIPTPATH=$(readlink -f "$0")
+SCRIPTNAME="${SCRIPTPATH##*/}"
+SCRIPTDIR="${SCRIPTPATH%/*}"
+
+if [ "$(id -u)" != "0" ]; then
+  echo "This script must be run as root" 1>&2
+  exit 1
+fi
+
+################
+##### ipv4 #####
+################
+
+# set default policy
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+iptables -t nat -P PREROUTING ACCEPT
+iptables -t nat -P INPUT ACCEPT
+iptables -t nat -P OUTPUT ACCEPT
+iptables -t nat -P POSTROUTING ACCEPT
+
+iptables -t mangle -P PREROUTING ACCEPT
+iptables -t mangle -P INPUT ACCEPT
+iptables -t mangle -P FORWARD ACCEPT
+iptables -t mangle -P OUTPUT ACCEPT
+iptables -t mangle -P POSTROUTING ACCEPT
+
+iptables -t raw -P PREROUTING ACCEPT
+iptables -t raw -P OUTPUT ACCEPT
+
+# delete all rules in all chains
+iptables -F
+iptables -t nat -F
+iptables -t mangle -F
+iptables -t raw -F
+
+# delete user-defined chains
+iptables -X
+iptables -t nat -X
+iptables -t mangle -X
+iptables -t raw -X
+
+# zero all packets and counters
+iptables -Z
+iptables -t nat -Z
+iptables -t mangle -Z
+iptables -t raw -Z
+
+
+# if ipv6 is supported by os
+if [ -f /proc/net/if_inet6 ]; then
+
+################
+##### ipv6 #####
+################
+
+# set default policy
+ip6tables -P INPUT ACCEPT
+ip6tables -P FORWARD ACCEPT
+ip6tables -P OUTPUT ACCEPT
+
+ip6tables -t nat -P PREROUTING ACCEPT
+ip6tables -t nat -P INPUT ACCEPT
+ip6tables -t nat -P OUTPUT ACCEPT
+ip6tables -t nat -P POSTROUTING ACCEPT
+
+ip6tables -t mangle -P PREROUTING ACCEPT
+ip6tables -t mangle -P INPUT ACCEPT
+ip6tables -t mangle -P FORWARD ACCEPT
+ip6tables -t mangle -P OUTPUT ACCEPT
+ip6tables -t mangle -P POSTROUTING ACCEPT
+
+ip6tables -t raw -P PREROUTING ACCEPT
+ip6tables -t raw -P OUTPUT ACCEPT
+
+# delete all rules in all chains
+ip6tables -F
+ip6tables -t nat -F
+ip6tables -t mangle -F
+ip6tables -t raw -F
+
+# delete user-defined chains
+ip6tables -X
+ip6tables -t nat -X
+ip6tables -t mangle -X
+ip6tables -t raw -X
+
+# zero all packets and counters
+ip6tables -Z
+ip6tables -t nat -Z
+ip6tables -t mangle -Z
+ip6tables -t raw -Z
+fi
+
+
+# flush all entries from all sets
+ipset flush
+
+# destroy all sets
+ipset destroy
+
+exit 0
+

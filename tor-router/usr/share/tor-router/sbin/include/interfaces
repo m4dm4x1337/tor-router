@@ -1,0 +1,22 @@
+interface_is_managed() { # $1=interfaces
+
+  local pattern= note=
+  local -
+
+  set -f
+
+  if ! [ "$1" = "lo" ] &&
+    iterate "${INTERFACES:-*}" |
+    while IFS=',' read -r pattern note; do
+      if [ -n "$pattern" -a -z "${1##$pattern}" ]; then
+        return 1
+      fi
+    done
+  then
+    return 1
+  else
+    return 0
+  fi
+
+}
+

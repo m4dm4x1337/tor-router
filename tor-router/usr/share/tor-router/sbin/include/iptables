@@ -1,0 +1,214 @@
+iptables_down() {
+
+  local iptables= chain=
+
+  for iptables in `kernel_has_ipv6_support && echo iptables ip6tables || echo iptables`; do
+    for chain in nat:PREROUTING nat:OUTPUT nat:POSTROUTING filter:INPUT filter:FORWARD filter:OUTPUT; do
+      while $iptables -t ${chain%%[:]*} -C ${chain##*[:]} -j TR_${chain##*[:]} 2>/dev/null; do
+        $iptables -t ${chain%%[:]*} -D ${chain##*[:]} -j TR_${chain##*[:]} 2>/dev/null || true
+      done
+      $iptables -t ${chain%%[:]*} -F TR_${chain##*[:]} 2>/dev/null || true
+      $iptables -t ${chain%%[:]*} -X TR_${chain##*[:]} 2>/dev/null || true
+      if [ "${chain%%[:]*}" = "filter" ]; then
+        $iptables -P ${chain##*[:]} ACCEPT || true
+      fi
+    done
+  done
+
+}
+
+iptables_up() {
+
+  local stderr=
+
+  iptables_down
+
+  if ! stderr=$(iptables_make 4 | iptables_verbose_log IPTABLES | iptables-restore -n 2>&1); then
+
+    printf '%s\n' "${stderr:-Unknown error}" | iptables_error_log IPTABLES
+
+    return 1
+
+  elif ! kernel_has_ipv6_support; then
+
+    return 0
+
+  elif ! stderr=$(iptables_make 6 | iptables_verbose_log IP6TABLES | ip6tables-restore -n 2>&1); then
+
+    printf '%s\n' "${stderr:-Unknown error}" | iptables_error_log IP6TABLES
+
+    return 1
+
+  fi
+
+  return 0
+
+}
+
+iptables_make() { # $1=inet (4/6)
+
+  local inet=$1 virt_addr=$( get_virtual_addr$1 )
+
+  case $inet in
+    4)
+      local lo_addr=127.0.0.1
+      local lo_addr_wrapped=$lo_addr
+      local net_prohibited=icmp-net-prohibited
+      local net_unreachable=icmp-net-unreachable
+      local port_unreachable=icmp-port-unreachable
+      local proto_unreachable=icmp-proto-unreachable
+    ;;
+    6)
+      local lo_addr=::1
+      local lo_addr_wrapped="[$lo_addr]"
+      local net_prohibited=icmp6-adm-prohibited
+      local net_unreachable=icmp6-addr-unreachable
+      local port_unreachable=icmp6-port-unreachable
+      local proto_unreachable=icmp6-no-route
+    ;;
+    *)
+      echo "[WARNUNG] Invalid inet: $1" >&2
+      return 1
+    ;;
+  esac
+
+cat << EOF | iptables_filter $1
+#*raw
+#:PREROUTING ACCEPT [0:0]
+#:OUTPUT ACCEPT [0:0]
+#COMMIT
+#
+#*mangle
+#:PREROUTING ACCEPT [0:0]
+#:INPUT ACCEPT [0:0]
+#:FORWARD ACCEPT [0:0]
+#:OUTPUT ACCEPT [0:0]
+#:POSTROUTING ACCEPT [0:0]
+#COMMIT
+
+*nat
+#:PREROUTING ACCEPT [0:0]
+#:INPUT ACCEPT [0:0]
+#:OUTPUT ACCEPT [0:0]
+#:POSTROUTING ACCEPT [0:0]
+:TR_PREROUTING - [0:0]
+:TR_OUTPUT - [0:0]
+:TR_POSTROUTING - [0:0]
+-A TR_PREROUTING ! -d $virt_addr -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
+-A TR_PREROUTING ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j ACCEPT
+-A TR_PREROUTING -p udp --dport 53 -j DNAT --to-destination $lo_addr_wrapped:${DNS_PORT:-8053}
+-A TR_PREROUTING -p tcp --syn -m set --match-set TR_DPORTS dst -j LOG --log-prefix "TR_PREROUTING->NEW: " --log-uid
+-A TR_PREROUTING -p tcp --syn -m set --match-set TR_DPORTS dst -j DNAT --to-destination $lo_addr_wrapped:${TRANS_PORT:-8040}
+-A TR_OUTPUT -m owner --uid-owner debian-tor -j ACCEPT
+#-A TR_OUTPUT -p udp --dport 53 -j REDIRECT --to-ports ${DNS_PORT:-8053}
+-A TR_OUTPUT -p udp --dport 53 -j DNAT --to-destination $lo_addr_wrapped:${DNS_PORT:-8053}
+-A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
+-A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j ACCEPT
+-A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j LOG --log-prefix "TR_OUTPUT->NEW: " --log-uid
+#-A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j REDIRECT --to-ports ${TRANS_PORT:-8040}
+-A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j DNAT --to-destination $lo_addr_wrapped:${TRANS_PORT:-8040}
+-A TR_POSTROUTING ! -o lo -m set --match-set TR_WHITELIST$inet src -j MASQUERADE
+-I PREROUTING -j TR_PREROUTING
+-I OUTPUT -j TR_OUTPUT
+-I POSTROUTING -j TR_POSTROUTING
+COMMIT
+
+*filter
+#:INPUT DROP [0:0]
+#:FORWARD DROP [0:0]
+#:OUTPUT DROP [0:0]
+:TR_INPUT - [0:0]
+:TR_FORWARD - [0:0]
+:TR_OUTPUT - [0:0]
+-A TR_INPUT -m state --state ESTABLISHED -j ACCEPT
+-A TR_INPUT -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
+-A TR_INPUT -p tcp --syn -m set --match-set TR_LPORTS dst -j LOG --log-prefix "TR_INPUT->NEW: " --log-uid
+-A TR_INPUT -p tcp --syn -m set --match-set TR_LPORTS dst -j ACCEPT
+-A TR_INPUT -p udp -m comment --comment DHCP --sport 67:68 --dport 67:68 -j ACCEPT
+-A TR_INPUT -j LOG --log-prefix "TR_INPUT->REJECT: " --log-uid
+-A TR_INPUT -j REJECT --reject-with $port_unreachable
+-A TR_FORWARD ! -d $virt_addr -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
+-A TR_FORWARD ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j REJECT --reject-with $net_unreachable
+-A TR_FORWARD -m state --state NEW -j LOG --log-prefix "TR_FORWARD->REJECT: " --log-uid
+-A TR_FORWARD -p tcp -j REJECT --reject-with $port_unreachable
+-A TR_FORWARD -j REJECT --reject-with $proto_unreachable
+-A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
+-A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j REJECT --reject-with $net_unreachable
+-A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_LPORTS src -j ACCEPT
+-A TR_OUTPUT -m conntrack --ctstate INVALID -j DROP
+-A TR_OUTPUT -m state --state INVALID -j DROP
+-A TR_OUTPUT ! -s $lo_addr ! -d $lo_addr ! -o lo -p tcp --tcp-flags FIN,ACK FIN,ACK -j DROP
+-A TR_OUTPUT ! -s $lo_addr ! -d $lo_addr ! -o lo -p tcp --tcp-flags RST,ACK RST,ACK -j DROP
+-A TR_OUTPUT -p tcp -m set --match-set TR_DPORTS dst -m owner --uid-owner debian-tor -j ACCEPT
+-A TR_OUTPUT -p tcp -m set --match-set TR_DPORTS dst -j REJECT --reject-with tcp-reset
+-A TR_OUTPUT -m state --state NEW -j LOG --log-prefix "TR_OUTPUT->REJECT: " --log-uid
+-A TR_OUTPUT -p tcp -j REJECT --reject-with $port_unreachable
+-A TR_OUTPUT -j REJECT --reject-with $proto_unreachable
+-I INPUT -j TR_INPUT
+-I FORWARD -j TR_FORWARD
+-I OUTPUT -j TR_OUTPUT
+-P INPUT DROP
+-P FORWARD DROP
+-P OUTPUT DROP
+COMMIT
+EOF
+}
+
+iptables_filter() { # $1=inet (4/6)
+  if ! tor_router_has_ipv$1_support_enabled; then
+    grep -vwF -e TR_PREROUTING -e TR_POSTROUTING -e TR_FORWARD -e TR_INPUT -e TR_OUTPUT
+  elif ! tor_router_has_ipv$1_forwarding_enabled; then
+    grep -vwF -e TR_PREROUTING -e TR_POSTROUTING -e TR_FORWARD
+  else
+    cat
+  fi | if ! tor_router_has_connection_logging_enabled; then
+    grep -vF -- '->NEW:'
+  else
+    cat
+  fi | if ! tor_router_has_reject_logging_enabled; then
+    grep -vF -- '->REJECT:'
+  else
+    cat
+  fi | sed '/^#/d'
+}
+
+iptables_error_log() { # $1=tag
+  sed -E "s/^.*$/\x1b[5;1;37;41m[$1] \x1b[0m\x1b[1;37;41m\0\x1b[0m/" >&2
+}
+
+iptables_verbose_log() {
+  if tor_router_has_verbose_logging_enabled; then
+#   while IFS= read -r line; do
+#     printf '%s\n' "$line" | iptables_highlight "[$1]" >&2
+#     printf '%s\n' "$line"
+#   done
+    { tee /dev/stderr 2>&3 | iptables_highlight "[$1]" ; } 3>&1 1>&2
+  else
+    cat -
+  fi
+}
+
+iptables_highlight() {
+
+  local d="\x1b[1;30m" r="\x1b[1;31m" g="\x1b[1;32m" y="\x1b[1;33m" b="\x1b[1;34m" m="\x1b[1;35m" c="\x1b[1;36m" w="\x1b[1;37m" _="\x1b[0m"
+
+  sed -E "
+    s/(^|\s)(\-\s+\[0:0\]|\*[a-z]+|COMMIT\b)/\1${d}\2${_}/g # BLACK
+    s/(^|\s)(DROP|INVALID)\b/\1${r}\2${_}/g # RED
+    s/(^|\s)(ACCEPT|ESTABLISHED|src|dst|debian-tor)\b/\1${g}\2${_}/g # GREEN
+    s/(^|\s)(REJECT|RETURN|icmp[6]?(-[a-z]+)+|tcp-reset)\b/\1${y}\2${_}/g # YELLOW
+    s/(^|\s)(NEW|TR_[A-Z]+[46]?|comment|conntrack|owner|state|set)\b/\1${b}\2${_}/g # BLUE
+    s/(^|\s)(DNAT|SNAT|REDIRECT|--[a-z0-9-]+|-[A-Za-z]\b)\b/\1${m}\2${_}/g # MAGENTA
+    s/(^|\s)(MASQUERADE|INPUT|OUTPUT|FORWARD|PREROUTING|POSTROUTING|tcp|udp|lo|eth[0-9]|wlan[0-9])\b/\1${c}\2${_}/g # CYAN
+    s/(^|\s)(\:TR_[A-Z]+|DHCP|LOG)\b/\1${w}\2${_}/g # WHITE
+    s/(^|\s|\,)(ACK|FIN|RST)\b/\1${c}\2${_}/g # CYAN
+    s/(^|\s)(\S+)(\/)([0-9]+)/\1${b}\2${_}${r}\3${_}${c}\4${_}/g # CIDR
+    s/(^|\s)(\S*:\S*:\S*|\S+\.\S+\.\S+)/\1${b}\2${_}/g # IP
+    s/(^|\s)([0-9]+)(:)([0-9]+)\b/\1${b}\2${_}${r}\3${_}${b}\4${_}/g # BLUE 
+    s/(^|\s)([0-9]+)\b/\1${b}\2${_}/g # BLUE 
+    s/(^|\s)(\"([^\"\\]+|\\\.)*\")/\1${w}\2${_}/g # WHITE
+    s/[\!\,]/${r}\0${_}/g # RED
+    s/^/${d}$1${_} /
+  "
+}
+

@@ -1,0 +1,126 @@
+cidr4_expand() { # $1=ip4_or_cidr4
+
+  local ip=${1%%/*} bits=32
+
+  if [ -z "${1##*/[0-9]*}" ]; then
+    bits=${1##*/}
+  fi
+
+  case $ip in
+    *.*.*.*) echo $ip/$bits ;;
+    *.*.*)   echo $ip.0/$bits ;;
+    *.*)     echo $ip.0.0/$bits ;;
+    *)       echo ${ip:-0}.0.0.0/$bits ;;
+  esac
+
+}
+
+get_networks() { # $1=input $2=inet (4/6) $3=callback (get_auto_blacklist/get_auto_whitelist)
+
+  local cidr= note=
+
+  iterate "$1" |
+  while IFS=',' read -r cidr note; do
+    case $2,$cidr in
+      *,@AUTO)    $3 "$2" "$note" ;;
+      6,*:*:*/*)  echo "$cidr${note:+ # $note}" ;;
+      6,*:*:*)    echo "$cidr/128${note:+ # $note}" ;;
+      4,*:*:*/*)  continue ;;
+      4,*:*:*)    continue ;;
+      4,[0-9]*/*) echo "`cidr4_expand $cidr`${note:+ # $note}" ;;
+      4,[0-9]*)   echo "`cidr4_expand $cidr/32`${note:+ # $note}" ;;
+      6,[0-9]*/*) continue ;;
+      6,[0-9]*)   continue ;;
+      *)          echo "[WARNING] Invalid cidr$2: '$cidr'" >&2 ;;
+    esac
+  done
+}
+
+get_auto_blacklist() { # $1=inet (4/6)
+
+  {
+
+    get_private_networks$1
+
+    get_reserved_networks$1
+
+  } |
+  while IFS="#$IFS" read -r cidr note; do
+    case $1 in
+      4) echo "`cidr4_expand $cidr`${note:+ # $note}" ;; # ipset expads ipv4 addresses incorrect
+      *) echo "$cidr${note:+ # $note}" ;;
+    esac
+  done
+
+}
+
+get_auto_whitelist() { # $1=inet (4/6) $2=note
+
+  local iface= state= addrlist= addr=
+
+  ip -$1 -br addr show |
+  while IFS=' ' read iface state addrlist; do
+    if interface_is_managed $iface; then
+      for addr in $addrlist; do
+        case $1,$addr in
+          6,[Ff][Ee][89AaBb]?:*:*) continue ;;
+          6,*:*:*/*)      echo "$addr # $iface${note:+ ($note)}" ;;
+          6,*:*:*)        echo "$addr/128 # $iface${note:+ ($note)}" ;;
+          4,*.*.*.*/*)    echo "$addr # $iface${note:+ ($note)}" ;;
+          4,*.*.*.*)      echo "$addr/32 # $iface${note:+ ($note)}" ;;
+        esac
+      done
+    fi
+  done
+
+}
+
+get_private_networks4() {
+cat << EOF
+10/8              # Private network (Class A)
+100.64/10         # Private network (CGNAT)
+127/8             # Local network (Loopback)
+172.16/12         # Private network (Class B)
+192.168/16        # Private network (Class C)
+EOF
+}
+
+get_reserved_networks4() {
+cat << EOF
+0/8               # Software (Current local "this" network)
+169.254/16        # Subnet (Used for link-local addresses)
+192/24            # Private network (IETF Protocol Assignments, DS-Lite /29)
+192.0.2/24        # Documentation (Assigned as TEST-NET-1, documentation and examples)
+192.88.99/24      # Internet (Reserved, Formerly used for IPv6 to IPv4 relay)
+198.18/15         # Private network (Used for benchmark testing of inter-network communications)
+198.51.100/24     # Documentation (Assigned as TEST-NET-2, documentation and examples)
+203.0.113/24      # Documentation (Assigned as TEST-NET-3, documentation and examples)
+224/4             # Internet (Multicast, Former Class D network)
+240/4             # Internet (Reserved for future use, Former Class E network)
+EOF
+}
+
+get_private_networks6() {
+cat << EOF
+::1/128           # corresponding to 127.0.0.1/8 in IPv4
+fc00::/7          # comparable to IPv4 private addresses 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16
+fe80::/10         # comparable to the auto-configuration addresses 169.254.0.0/16 of IPv4
+EOF
+}
+
+get_reserved_networks6() {
+#::/0             # corresponding to 0.0.0.0/0 in IPv4
+cat << EOF
+::/128            # corresponding to 0.0.0.0/32 in IPv4
+::ffff:0.0.0.0/96 # used for IPv6 transition mechanisms and designated as an IPv4-mapped IPv6 address
+::ffff:0:0:0/96   # used for IPv4-translated addresses
+64:ff9b::/96      # used for automatic IPv4/IPv6 translation
+100::/64          # used for discarding traffic
+2001::/32         # used for Teredo tunneling
+2001:2::/48       # used for benchmarking IPv6 (corresponding to 198.18.0.0/15 for benchmarking IPv4)
+2001:20::/28      # ORCHIDv2 (Overlay Routable Cryptographic Hash Identifiers)
+2001:db8::/32     # used in documentation (corresponding to 192.0.2.0/24, 198.51.100.0/24, and 203.0.113.0/24 in IPv4)
+2002::/16         # was used for 6to4 addressing (an address from the IPv4 network 192.88.99.0/24 was also used, now deprecated)
+ff00::/8          # multicast address
+EOF
+}

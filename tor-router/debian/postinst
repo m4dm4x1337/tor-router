@@ -1,0 +1,77 @@
+#!/bin/sh
+
+set -e
+
+for i in lib log; do
+    if ! [ -d "/var/$i/tor-router" ]; then
+        echo "Something or somebody made /var/$i/tor-router disappear."
+        echo "Creating one for you again."
+        mkdir "/var/$i/tor-router"
+    fi
+done
+
+which restorecon >/dev/null 2>&1 && restorecon /var/lib/tor-router
+chown debian-tor:debian-tor /var/lib/tor-router
+chmod 02700 /var/lib/tor-router
+
+which restorecon >/dev/null 2>&1 && restorecon /var/log/tor-router
+chown syslog:adm /var/log/tor-router
+chmod 02750 /var/log/tor-router
+
+if [ "$1" = "configure" ]; then
+    APP_PROFILE="/etc/apparmor.d/system_tor_router"
+    if [ -f "$APP_PROFILE" ]; then
+        # Add the local/ include
+        LOCAL_APP_PROFILE="/etc/apparmor.d/local/system_tor_router"
+
+        test -e "$LOCAL_APP_PROFILE" || {
+            mkdir -p "${LOCAL_APP_PROFILE%/*}"
+            install --mode 644 /dev/null "$LOCAL_APP_PROFILE"
+        }
+
+        # Reload the profile, including any abstraction updates
+        if command -v aa-enabled 1>/dev/null 2>/dev/null; then
+            if aa-enabled --quiet 1>/dev/null 2>/dev/null; then
+                apparmor_parser -r -T -W "$APP_PROFILE" || true
+            fi
+        fi
+    fi
+fi
+
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    if command -v deb-systemd-helper 1>/dev/null 2>/dev/null; then
+        deb-systemd-helper unmask tor-router.service || true
+        if deb-systemd-helper --quiet was-enabled tor-router.service; then
+            deb-systemd-helper enable tor-router.service || true
+         else
+            deb-systemd-helper update-state tor-router.service || true
+        fi
+    fi
+fi
+
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    if [ -x /etc/init.d/tor-router ]; then
+        update-rc.d tor-router defaults
+    fi
+fi
+
+if [ -d /run/systemd/system ]; then
+    systemctl --system daemon-reload 1>/dev/null 2>/dev/null || true
+fi
+
+if [ "$1" = "configure" ]; then
+  if [ -x /etc/init.d/rsyslog ]; then
+    if systemctl is-active --quiet rsyslog.service >/dev/null 2>&1; then
+      invoke-rc.d rsyslog restart || true
+    fi
+  fi
+  if [ -x /etc/init.d/tor-router ]; then
+    if systemctl is-active --quiet tor-router.service >/dev/null 2>&1; then
+      invoke-rc.d tor-router restart
+#   else
+#     invoke-rc.d tor-router start
+    fi
+  fi
+fi
+
+exit 0

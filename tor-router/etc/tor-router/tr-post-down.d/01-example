@@ -1,0 +1,6 @@
+# Root-owned executable files in /etc/tor-router/tr-post-down.d/ 
+# are sourced after the firewall rules have benn deleted.
+
+# echo "Hello World from $0"
+# env | sort
+

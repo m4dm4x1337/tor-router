@@ -1,0 +1,43 @@
+routing_up() {
+
+  if ! kernel_has_ipv6_support; then
+    return 0
+  fi
+
+  if routing_trick_is_up; then
+    routing_trick_down
+  fi
+
+  if ! tor_router_has_ipv6_support_enabled; then
+    return 0
+  fi
+
+  if ! routing_ipv6_is_possible; then # we need the routing trick only in that specific case
+    routing_trick_up
+  fi
+
+}
+
+routing_down() {
+
+  if routing_trick_is_up; then
+    routing_trick_down
+  fi
+
+}
+
+routing_trick_up() {
+  ip -6 route add dev lo table local proto static metric 1024 local default pref medium || true
+}
+
+routing_trick_down() {
+  ip -6 route del dev lo table local proto static metric 1024 local default pref medium || true
+}
+
+routing_trick_is_up() {
+  ip -6 route show default dev lo table local proto static metric 1024 | grep -q -m1 -wF 'local default'
+}
+
+routing_ipv6_is_possible() {
+  ip -6 route get 2001:4860:4860::8888 >/dev/null 2>&1 # check if there is a ipv6 route to the google DNS server
+}

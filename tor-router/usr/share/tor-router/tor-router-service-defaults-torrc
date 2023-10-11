@@ -1,0 +1,12 @@
+DataDirectory /var/lib/tor-router
+PidFile /var/run/tor-router/tor-router.pid
+RunAsDaemon 1
+User debian-tor
+
+SyslogIdentityTag Router
+CircuitBuildTimeout 5
+KeepalivePeriod 60
+NewCircuitPeriod 15
+NumEntryGuards 8
+
+Log notice syslog

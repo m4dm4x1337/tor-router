@@ -1,0 +1,32 @@
+goodbye_get_title() {
+
+  local title="$( gettext 'Tor router was stopped cleanly.' )"
+
+  local pad=$(( ( 76 - ${#title} ) / 2 ))
+
+  title=$( printf '%s' "$title" | sed 's/^.*$/\x1b[3;32m\0\x1b[0m/' )
+
+  printf "\n%-${pad}.${pad}s%s\n\n" "" "$title"
+
+}
+
+goodbye_get_url() {
+
+  local url='https://github.com/m4dm4x1337/tor-router'
+
+  local pad=$(( ( 76 - ${#url} ) / 2 ))
+
+  local format=$( echo | sed 's/^/\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\/' )
+
+  url=$( printf "$format" "$url" "$url" )
+
+  url=$( printf '%s' "$url" | sed 's/^.*$/\x1b[1;32m\0\x1b[0m/' )
+
+  printf "\n%-${pad}.${pad}s%s\n\n" "" "$url"
+
+}
+
+goodbye_get_title
+
+goodbye_get_url
+

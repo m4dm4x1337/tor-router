@@ -1,0 +1,16 @@
+#!/bin/sh
+
+#https://www.dan.me.uk/tornodes
+
+do_get_exit_nodes()
+{
+    local url=https://check.torproject.org/torbulkexitlist?ip=1.1.1.1 ip=
+
+    for ip in `wget -qO- "$url" | grep -v '^#'`; do
+        echo "$ip,$(geoiplookup $ip | sed 's/GeoIP Country Edition: //g; s/IP Address not found/ZZ, Unknown/g; s/\s*,\s*/,/g')"
+    done
+}
+
+do_get_exit_nodes | cut -f2,3 -d',' | sort | uniq -c | sort -nr
+
+exit 0

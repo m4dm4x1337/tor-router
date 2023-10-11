@@ -1,0 +1,49 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "purge" ] ; then
+    update-rc.d tor-router remove
+fi
+
+if [ -d /run/systemd/system ] ; then
+    systemctl --system daemon-reload >/dev/null || true
+fi
+
+if [ "$1" = "remove" ]; then
+    if command -v deb-systemd-helper 1>/dev/null 2>/dev/null; then
+        deb-systemd-helper mask tor-router.service >/dev/null || true
+    fi
+fi
+
+if [ "$1" = "purge" ]; then
+    if command -v deb-systemd-helper 1>/dev/null 2>/dev/null; then
+        deb-systemd-helper purge tor-router.service >/dev/null || true
+        deb-systemd-helper unmask tor-router.service >/dev/null || true
+    fi
+fi
+
+if [ -d /run/systemd/system ]; then
+    systemctl --system daemon-reload 1>/dev/null 2>/dev/null || true
+fi
+
+if [ "$1" = "purge" ]; then
+    rm -fr /var/lib/tor-router /var/log/tor-router /var/run/tor-router
+fi
+
+if [ "$1" = "purge" ] && ! [ -e "/etc/apparmor.d/system_tor_router" ] ; then
+    rm -f "/etc/apparmor.d/disable/system_tor_router" || true
+    rm -f "/etc/apparmor.d/force-complain/system_tor_router" || true
+    rm -f "/etc/apparmor.d/local/system_tor_router" || true
+    rmdir /etc/apparmor.d/disable 2>/dev/null || true
+    rmdir /etc/apparmor.d/local   2>/dev/null || true
+    rmdir /etc/apparmor.d         2>/dev/null || true
+fi
+
+if [ "$1" = "upgrade" ]; then
+  : # continue running, restart in postinst
+elif [ -x /etc/init.d/rsyslog ]; then
+  invoke-rc.d rsyslog restart || true
+fi
+
+exit 0

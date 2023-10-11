@@ -1,0 +1,27 @@
+#SCRIPTNAME="${SCRIPTPATH##*/}"
+#SCRIPTDIR="${SCRIPTPATH%/*}"
+
+iterate() { # $1=input
+
+  local IFS="$( printf ';,\n\r' )"
+  local line= value= comment=
+
+  for line in $1; do
+
+    value="${line%%#*}" # strip comment
+    value="${value#"${value%%[![:space:]]*}"}" # ltrim
+    value="${value%"${value##*[![:space:]]}"}" # rtrim
+
+    if [ -z "${line##*#*}" ]; then # if has comment
+      comment="${line#*#}" # extract comment
+      comment="${comment#"${comment%%[![:space:]]*}"}" # ltrim
+      comment="${comment%"${comment##*[![:space:]]}"}" # rtrim
+    else
+      comment=
+    fi
+
+    printf '%s,%s\n' "$value" "$comment" # return value and comment separated by comma and terminated by newline (similar to a .csv file)
+
+  done
+}
+

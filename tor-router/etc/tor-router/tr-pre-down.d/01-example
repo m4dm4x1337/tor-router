@@ -1,0 +1,7 @@
+# Root-owned executable files in /etc/tor-router/tr-pre-down.d/ 
+# are sourced after tor-router stops but before the firewall 
+# rules are deleted.
+
+# echo "Hello World from $0"
+# env | sort
+

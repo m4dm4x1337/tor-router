@@ -1,0 +1,25 @@
+# vim:syntax=apparmor
+#include <tunables/global>
+
+profile system_tor_router flags=(attach_disconnected) {
+  #include <abstractions/tor-router>
+
+  owner /var/lib/tor-router/** rwk,
+  owner /var/lib/tor-router/ r,
+  owner /var/log/tor-router/* w,
+
+  # During startup, tor (as root) tries to open various things such as
+  # directories via check_private_dir().  Let it.
+  /var/lib/tor-router/** r,
+
+  /{,var/}run/tor-router/ r,
+  /{,var/}run/tor-router/control w,
+  /{,var/}run/tor-router/socks w,
+  /{,var/}run/tor-router/tor-router.pid w,
+  /{,var/}run/tor-router/control.authcookie w,
+  /{,var/}run/tor-router/control.authcookie.tmp rw,
+  /{,var/}run/systemd/notify w,
+
+  # Site-specific additions and overrides. See local/README for details.
+  #include <local/system_tor_router>
+}

@@ -1,0 +1,4 @@
+tor-router_1.0*
+tor-router/debian/files
+tor-router/debian/tor-router*
+tor-router/debian/.debhelper/

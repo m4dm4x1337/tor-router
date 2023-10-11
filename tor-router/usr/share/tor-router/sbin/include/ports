@@ -1,0 +1,36 @@
+get_ports() { # $1=input
+
+  local port= note=
+
+  iterate "$1" |
+  while IFS=',' read -r port note; do
+    case $port in
+      *[a-z]*) echo "`port2number $port` # `port2name $port`${note:+ ($note)}" ;;
+          *-*) echo "$port # multi-port range${note:+ ($note)}" ;;
+            *) echo "$port # `port2name $port`${note:+ ($note)}" ;;
+    esac
+  done
+}
+
+port2number() { # $1=port (number or name)
+  getent services $1 | {
+    local service= port= proto= aliases=
+    if IFS='/ ' read -r service port proto aliases; then
+      echo $port
+    else
+      echo $1
+    fi
+  }
+}
+
+port2name() { # $1=port (number or name)
+  getent services $1 | {
+    local service= port= proto= aliases=
+    if IFS='/ ' read -r service port proto aliases; then
+      echo $service
+    else
+      echo unknown port
+    fi
+  }
+}
+

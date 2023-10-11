@@ -1,0 +1,40 @@
+[Unit]
+Description=Transparent TOR proxy and DNS proxy with routing capability
+After=network.target nss-lookup.target
+ReloadPropagatedFrom=%N.service
+
+[Service]
+Type=forking
+GuessMainPID=yes
+PIDFile=/var/run/%N/%N.pid
+PermissionsStartOnly=yes
+ExecStartPre=/usr/bin/install -Z -m 02755 -o debian-tor -g debian-tor -d /var/run/%N
+ExecStartPre=/usr/share/tor-router/sbin/tor-router-up 2>&1
+ExecStartPre=/usr/bin/%N --defaults-torrc /usr/share/%N/%N-service-defaults-torrc -f /etc/%N/torrc --hush --verify-config
+ExecStart=/usr/bin/%N --defaults-torrc /usr/share/%N/%N-service-defaults-torrc -f /etc/%N/torrc --hush
+ExecReload=/usr/bin/%N --defaults-torrc /usr/share/%N/%N-service-defaults-torrc -f /etc/%N/torrc --hush --verify-config
+#ExecReload=/usr/share/tor-router/sbin/tor-router-up 2>&1
+ExecReload=/bin/kill -HUP ${MAINPID}
+ExecStopPost=/usr/share/tor-router/sbin/tor-router-down 2>&1
+KillSignal=SIGINT
+TimeoutStartSec=300
+TimeoutStopSec=60
+Restart=on-failure
+LimitNOFILE=65536
+
+# Hardening
+AppArmorProfile=-system_tor_router
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=full
+ReadOnlyDirectories=/
+ReadWriteDirectories=-/proc
+ReadWriteDirectories=-/var/lib/%N
+ReadWriteDirectories=-/var/log/%N
+ReadWriteDirectories=-/var/run
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH
+
+[Install]
+WantedBy=multi-user.target

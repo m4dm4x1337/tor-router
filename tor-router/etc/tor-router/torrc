@@ -1,0 +1,7 @@
+VirtualAddrNetworkIPv4 127.192.0.0/10
+AutomapHostsOnResolve 1
+SocksPort 8050
+TransPort 8040
+DNSPort 8053
+GeoIPExcludeUnknown 0
+StrictNodes 0

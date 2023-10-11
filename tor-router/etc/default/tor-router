@@ -1,0 +1,123 @@
+# Tip of the Day: You can create plugins in /etc/tor-router/tr-pre-up.d/ (See example 90-hostname-plugin)
+
+# Allowed destination ports (comma-separated list of port numbers, or service names from /etc/services e.g. http,https,ssh, or ranges, e.g. 0-65535)
+# DPORTS=http,https
+
+# Allowed listen ports (comma-separated list of port numbers, or service names from /etc/services e.g. http,https,ssh, or ranges, e.g. 67-68)
+# If tor-router is running on an external server, don't forget to allow the ssh port so as not to lock yourself out!
+# LPORTS=ssh
+
+# Allow direct access to networks (comma-separated list, use @AUTO to whitelist your local networks)
+# If you are using tor-router over an external vpn, add the IP address or CIDR of your VPN server here.
+# You can also add your own IP here if tor-router is running on an external server to avoid locking yourself out from that server.
+# WHITELIST=@AUTO
+
+# Deny access to networks (comma-separated list, use @AUTO to blacklist unreachable networks)
+# If you want to reject access to specific hosts or networks, add the IP address or CIDR here.
+# BLACKLIST=@AUTO
+
+# Enable IPv6 when tor-router is running (yes/no, use @AUTO to make this depend on net.ipv6.conf.default.disable_ipv6)
+# You can run /usr/share/tor-router/sbin/whatsmyip6 to verify IPv6 routing, but it may fail because not all tor nodes support IPv6.
+# In such a case, just run systemctl reload tor-router.service to switch your IP and run /usr/share/tor-router/sbin/whatsmyip6 again.
+# ENABLE_IPV6=no
+
+# Prefer IPv6 when tor-router is running (yes/no)
+# PREFER_IPV6=no
+
+# Allow routing of traffic from network clients (yes/no, use @AUTO to make this depend on net.ipv4.conf.default.forwarding / net.ipv6.conf.default.forwarding)
+# ROUTER=no
+
+# Log new connections to /var/log/tor-router/ (yes/no)
+# CONNECTION_LOG=no
+
+# Log rejected connections to /var/log/tor-router/ (yes/no)
+# REJECT_LOG=no
+
+# Log iptables rules, ipset rules and sysctl changes to stderr when tor-router starts/stops To view the verbose logs since the last start, 
+# run: journalctl -aelq -u tor-router -n 1000 --no-pager _SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value tor-router)"
+# VERBOSE=no
+
+# Tor's VirtualAddrNetworkIPv4 and VirtualAddrNetworkIPv6 (use @AUTO to choose the address automatically)
+# VIRTUAL_ADDR4=@AUTO
+# VIRTUAL_ADDR6=@AUTO
+
+# Tor-Router SocksPort
+# SOCKS_PORT=8050
+
+# Tor-Router TransPort
+# TRANS_PORT=8040
+
+# Tor-Router DNSPort
+# DNS_PORT=8053
+
+# Exclude nodes with unknown geo IP location (0/1)
+# GEOIP_EXCLUDE_UNKNOWN=0
+
+# If STRICT_NODES is set to 1, one of the following *_NODES options is a requirement
+# STRICT_NODES=0
+
+# Use specific countries as entry nodes (Example: {ch},{at},{de})
+# ENTRY_NODES=
+
+# Use specific countries as exit nodes (Example: {ch},{at},{de})
+# EXIT_NODES=
+
+# Exclude nodes in specific countries (Example: {us},{au},{ca},{nz},{gb})
+# EXCLUDE_NODES=
+
+# Exclude exit nodes in specific countries (Example: {us},{au},{ca},{nz},{gb})
+# EXCLUDE_EXIT_NODES=
+
+# ##############
+# # INTERFACES #
+# ##############
+
+# The necessary kernel parameters are configured for the specified interfaces, and the IP addresses 
+# are whitelisted ("lo" is always configured/whitelisted). The network interface(s) with a "default" 
+# route must be specified here. You can use patterns separated by a comma or semicolon. The default 
+# value is "*". You can use INTERFACES=`ip route get 8.8.8.8 | grep -oP 'dev\s+\K\S+'`
+# if you only want to configure and whitelist the default interface.
+
+# INTERFACES=*
+
+# ##########
+# # SYSCTL #
+# ##########
+
+# You can overwrite kernel parameters for each managed device in /sys/class/net/* 
+# when tor-router starts or stops. But only "route_localnet", "forwarding" and 
+# "disable_ipv6" can be changed, and only if the key pattern matches. This feature 
+# can be used to ensure that, for example, IPv6 is always disabled, or to ensure 
+# eth0/wlan0 forwarding, or to prevent tun0 forwarding. An empty or invalid value 
+# causes the parameters to remain unchanged. You can use "*=" to prevent any 
+# modification. The comment character is "#". Entries are separated by newline 
+# characters. In the vast majority of cases, nothing needs to be changed here. 
+# Overwriting is only necessary in very specific scenarios.
+
+# If nothing else was configured when tor-router is started, the used values will 
+# depend on the variables "ENABLE_IPV6" and "ROUTER", which may in turn depend on 
+# "net.*.conf.default.*" if the variables have the value "@AUTO". Transparent 
+# routing requires "route_localnet" set to 1 on the network interface(s) with 
+# a "default" route. The same applies to any forwarded network interface.
+
+# SYSCTL_UP="
+# #net.*.conf.*.route_localnet=1
+# #net.*.conf.*.forwarding=0
+# #net.*.conf.*.disable_ipv6=1
+# "
+
+# If nothing else was configured when tor-router is stopped, default values from 
+# "net.*.conf.default.*" will be set on each managed device.
+
+# SYSCTL_DOWN="
+# #net.*.conf.*.route_localnet=0
+# #net.*.conf.*.forwarding=0
+# #net.*.conf.*.disable_ipv6=0
+# "
+
+# You can use the following command to see the current values:
+# sysctl -a 2>/dev/null | grep -wF -e disable_ipv6 -e forwarding -e route_localnet | sort -k4,4 -k5 -k2,2 -t. | grep --color=always -wF -e 1 -e ''
+
+# You can use the following command to reset (disable) the values:
+# sysctl -a 2>/dev/null | grep -wF -e disable_ipv6 -e forwarding -e route_localnet | tr -d ' ' | sed 's/=1/=0/' | sysctl -p /dev/stdin
+

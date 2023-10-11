@@ -1,0 +1,213 @@
+kernel_has_ipv6_support() {
+  [ -f /proc/net/if_inet6 ]
+}
+
+kernel_has_ipv6_enabled() {
+  grep -m1 -qxF 0 /proc/sys/net/ipv6/conf/default/disable_ipv6
+}
+
+kernel_has_forwarding_enabled() { # $1=inet (4/6)
+  grep -m1 -qxF 1 /proc/sys/net/ipv$1/conf/default/forwarding
+}
+
+sysctl_up() {
+
+  local inet= iface= parameter= value= note= path= key= stderr=
+
+  if stderr=$(
+    sysctl_iter "$SYSCTL_UP" |
+    while IFS=',' read -r inet iface parameter value note; do
+      path=/proc/sys/net/$inet/conf/$iface/$parameter
+      key=net.$inet.conf.$iface.$parameter
+      if [ "$value" = "@AUTO" ]; then
+        value=$(sysctl_get_auto_value $inet $iface $parameter)
+        printf '%-40.40s # %s\n' "$key = $value" "choosen by tor-router${note:+ ($note)}" | sysctl_verbose_log 2>&1
+        echo $value > $path || return 1
+      elif [ "$value" = "0" ] || [ "$value" = "1" ]; then
+        printf '%-40.40s # %s\n' "$key = $value" "config says use '$value'${note:+ ($note)}" | sysctl_verbose_log 2>&1
+        echo $value > $path || return 1
+      else
+        printf '%-40.40s # %s\n' "$key = `cat $path`" "config says don't change${note:+ ($note)}" | sysctl_verbose_log 2>&1
+      fi
+    done 3>&2 2>&1 1>&3 3>&-
+  )
+  then
+    return 0
+  fi
+
+  printf '%s\n' "${stderr:-Unknown error}" | sysctl_error_log
+
+  return 1
+
+}
+
+sysctl_down() {
+
+  local inet= iface= parameter= value= note= path= key=
+
+  if stderr=$(
+    sysctl_iter "$SYSCTL_DOWN" |
+    while IFS=',' read -r inet iface parameter value note; do
+      path=/proc/sys/net/$inet/conf/$iface/$parameter
+      key=net.$inet.conf.$iface.$parameter
+      if [ "$value" = "@AUTO" ]; then
+        value=$(cat /proc/sys/net/$inet/conf/default/$parameter)
+        printf '%-40.40s # %s\n' "$key = $value" "choosen by tor-router from net.$inet.conf.default.$parameter${note:+ ($note)}" | sysctl_verbose_log 2>&1
+        echo $value > $path # || return 1 # don't stop on error
+      elif [ "$value" = "0" ] || [ "$value" = "1" ]; then
+        printf '%-40.40s # %s\n' "$key = $value" "config says use '$value'${note:+ ($note)}" | sysctl_verbose_log 2>&1
+        echo $value > $path # || return 1 # don't stop on error
+      else
+        printf '%-40.40s # %s\n' "$key = `cat $path`" "config says don't change${note:+ ($note)}" | sysctl_verbose_log 2>&1
+      fi
+    done 3>&2 2>&1 1>&3 3>&-
+  )
+  then
+    return 0
+  fi
+
+  printf '%s\n' "${stderr:-Unknown error}" | sysctl_error_log
+
+  return 1
+
+}
+
+sysctl_iter() { # $1 = $SYSCTL_UP or $SYSCTL_DOWN
+
+  local IFS="$IFS"
+  local OFS="$IFS"
+  local NFS="$( printf ';,\n\r' )"
+  local iface= inet= parameter= line= statement= comment= pattern= overwritten= key= value= usernote=
+  local -
+
+  set -f
+
+  for iface in `ls -1 /sys/class/net/`; do
+    if interface_is_managed "$iface"; then
+      for inet in ipv4 ipv6; do
+        for parameter in route_localnet forwarding disable_ipv6; do
+          if [ -e /proc/sys/net/$inet/conf/$iface/$parameter ]; then
+
+            key="net.$inet.conf.$iface.$parameter"
+            value=@AUTO
+            comment=
+
+            IFS="$NFS"
+
+            for line in $1; do
+
+              statement="${line%%#*}" # strip comment
+              statement="${statement#"${statement%%[![:space:]]*}"}" # ltrim
+              statement="${statement%"${statement##*[![:space:]]}"}" # rtrim
+
+              if [ -z "${line##*#*}" ]; then
+                usernote="${line#*#}"
+                usernote="${usernote#"${usernote%%[![:space:]]*}"}" # ltrim
+                usernote="${usernote%"${usernote##*[![:space:]]}"}" # rtrim
+              else
+                usernote=
+              fi
+
+              pattern="${statement%%=*}"
+              pattern="${pattern#"${pattern%%[![:space:]]*}"}" # ltrim
+              pattern="${pattern%"${pattern##*[![:space:]]}"}" # rtrim
+
+              if [ -z "${statement##*=*}" ]; then
+                overwritten="${statement#*=}"
+                overwritten="${overwritten#"${overwritten%%[![:space:]]*}"}" # ltrim
+                overwritten="${overwritten%"${overwritten##*[![:space:]]}"}" # rtrim
+              else
+                overwritten=
+                continue # ignore statements without equal sign
+              fi
+
+              if [ -n "$pattern" -a -z "${key##$pattern}" ]; then
+                value="$overwritten" comment="$usernote"
+              fi
+
+            done
+
+            IFS="$OFS"
+
+            printf '%s,%s,%s,%s,%s\n' "$inet" "$iface" "$parameter" "$value" "$comment"
+
+          fi
+        done
+      done
+    fi
+  done
+
+}
+
+sysctl_get_auto_value() { # $1=inet $2=iface $3=parameter
+  case "net.$1.conf.$2.$3" in
+    net.ipv4.conf.*.route_localnet)
+      if [ "$2" = "lo" ]; then
+        echo 0
+      else
+        echo 1
+      fi
+    ;;
+    net.ipv4.conf.*.forwarding)
+      if [ "$2" = "lo" ]; then
+        echo 0
+      elif tor_router_has_ipv4_forwarding_enabled; then
+        echo 1
+      else
+        echo 0
+      fi
+    ;;
+    net.ipv6.conf.*.forwarding)
+      if kernel_has_ipv6_support; then
+        if tor_router_has_ipv6_support_enabled; then
+          if [ "$2" = "lo" ]; then
+            echo 0
+          elif tor_router_has_ipv6_forwarding_enabled; then
+            echo 1
+          else
+            echo 0
+          fi
+        else
+          echo 0
+        fi
+      fi
+    ;;
+    net.ipv6.conf.*.disable_ipv6)
+      if kernel_has_ipv6_support; then
+        if tor_router_has_ipv6_support_enabled; then
+          echo 0
+        else
+          echo 1
+        fi
+      fi
+    ;;
+  esac
+}
+
+sysctl_error_log() {
+  sed -E 's/^.*$/\x1b[5;1;37;41m[SYSCTL] \x1b[0m\x1b[1;37;41m\0\x1b[0m/' >&2
+}
+
+sysctl_verbose_log() {
+  if tor_router_has_verbose_logging_enabled; then
+#   while IFS= read -r line; do
+#     printf '%s\n' "$line" | sysctl_highlight "[SYSCTL]" >&2
+#   done
+    { tee /dev/stderr 2>&3 | sysctl_highlight '[SYSCTL]' ; } 3>/dev/null 1>&2
+  fi
+}
+
+sysctl_highlight() {
+
+  local d="\x1b[1;30m" r="\x1b[1;31m" g="\x1b[1;32m" y="\x1b[1;33m" b="\x1b[1;34m" m="\x1b[1;35m" c="\x1b[1;36m" w="\x1b[1;37m" _="\x1b[0m"
+
+  sed -E "
+    s/^(net)\.(ipv4)\.(conf)\.([^\.]+)\.(\S+)(\s*=\s*)0/${b}\1${_}${r}.${_}${b}\2${_}${r}.${_}${b}\3${_}${r}.${_}${c}\4${_}${r}.${_}${w}\5${_}${r}\6${_}${g}0${_}/
+    s/^(net)\.(ipv4)\.(conf)\.([^\.]+)\.(\S+)(\s*=\s*)1/${b}\1${_}${r}.${_}${b}\2${_}${r}.${_}${b}\3${_}${r}.${_}${c}\4${_}${r}.${_}${w}\5${_}${r}\6${_}${y}1${_}/
+    s/^(net)\.(ipv6)\.(conf)\.([^\.]+)\.(\S+)(\s*=\s*)0/${m}\1${_}${r}.${_}${m}\2${_}${r}.${_}${m}\3${_}${r}.${_}${c}\4${_}${r}.${_}${w}\5${_}${r}\6${_}${g}0${_}/
+    s/^(net)\.(ipv6)\.(conf)\.([^\.]+)\.(\S+)(\s*=\s*)1/${m}\1${_}${r}.${_}${m}\2${_}${r}.${_}${m}\3${_}${r}.${_}${c}\4${_}${r}.${_}${w}\5${_}${r}\6${_}${y}1${_}/
+    s/\#.*$/${d}\0${_} /
+    s/^/${d}$1${_} /
+"
+}
+
