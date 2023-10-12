@@ -159,7 +159,7 @@ The Tor-Router Debian package was created by m4dm4x1337.
 
  ❤️ Please donate ❤️
 
-![QR code for donations](about:blank)
+![QR code for donations](https://raw.githubusercontent.com/m4dm4x1337/tor-router-gnome/master/tor-router-gnome/usr/share/pixmaps/tor-router-gnome-donation.png)
 
 This project is open source, and the only income comes from the donators. If you like the project, please donate, thank you!
 
