@@ -7,7 +7,7 @@ Standards-Version: 4.6.2
 
 Package: tor-router
 Architecture: all
-Depends: coreutils (>= 8.5), grep (>= 2.5.4), iproute2, ipset, iptables, libc-bin (>= 2.9), logrotate, lsb-base, netbase, procps, rsyslog, sed (>= 4.2), tor
+Depends: coreutils (>= 8.5), gettext-base, grep (>= 2.5.4), iproute2, ipset, iptables, libc-bin (>= 2.9), logrotate, lsb-base, netbase, procps, rsyslog, sed (>= 4.2), tor
 Recommends: dnsutils
 Suggests: tor-router-gnome, tor-router-web-gui
 Homepage: https://github.com/m4dm4x1337/tor-router
