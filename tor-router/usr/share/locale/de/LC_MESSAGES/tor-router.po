@@ -1,12 +1,12 @@
-# German translation of tor-router-web-gui
+# German translation of tor-router
 # Copyright (C) 2023 m4dm4x1337 <madmax@earth.local>
-# This file is distributed under the same license as the tor-router-web-gui package.
+# This file is distributed under the same license as the tor-router package.
 # m4dm4x1337 <madmax@earth.local>, 2023.
 #
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: tor-router-web-gui 1.0\n"
+"Project-Id-Version: tor-router 1.0\n"
 "Report-Msgid-Bugs-To: m4dm4x1337 <madmax@earth.local>\n"
 "POT-Creation-Date: 2023-09-19 16:12+0200\n"
 "PO-Revision-Date: 2023-09-19 16:12+0200\n"
