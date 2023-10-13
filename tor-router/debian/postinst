@@ -15,7 +15,7 @@ chown debian-tor:debian-tor /var/lib/tor-router
 chmod 02700 /var/lib/tor-router
 
 which restorecon >/dev/null 2>&1 && restorecon /var/log/tor-router
-chown syslog:adm /var/log/tor-router
+chown debian-tor:adm /var/log/tor-router
 chmod 02750 /var/log/tor-router
 
 if [ "$1" = "configure" ]; then
