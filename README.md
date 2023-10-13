@@ -135,9 +135,9 @@ Plugins are only loaded if they belong to the root user and are executable.
 
 There are **two** graphical user interfaces!
 
-The first is an app indicator for the GNOME desktop that allows you to easily start/stop Tor-Router. You can also see whether Tor-Router is running or not based on the color of the icon and the label text next to the icon.
+The first is an [app indicator for the GNOME desktop](https://github.com/m4dm4x1337/tor-router-gnome) that allows you to easily start/stop Tor-Router. You can also see whether Tor-Router is running or not based on the color of the icon and the label text next to the icon.
 
-The second is a web GUI that can display a lot of additional information and enable remote management and monitoring of Tor-Router.
+The second is a [web GUI](https://github.com/m4dm4x1337/tor-router-web-gui) that can display a lot of additional information and enable remote management and monitoring of Tor-Router.
 
 ## Internationalization (i18n)
 
