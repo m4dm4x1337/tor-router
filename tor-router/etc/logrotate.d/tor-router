@@ -5,6 +5,6 @@
         compress
         delaycompress
         notifempty
-        create 640 syslog adm
+        create 640 debian-tor adm
         sharedscripts
 }
