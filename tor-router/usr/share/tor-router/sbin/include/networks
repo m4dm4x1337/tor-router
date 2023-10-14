@@ -63,7 +63,6 @@ get_auto_whitelist() { # $1=inet (4/6) $2=note
     if interface_is_managed $iface; then
       for addr in $addrlist; do
         case $1,$addr in
-          6,[Ff][Ee][89AaBb]?:*:*) continue ;;
           6,*:*:*/*)      echo "$addr # $iface${note:+ ($note)}" ;;
           6,*:*:*)        echo "$addr/128 # $iface${note:+ ($note)}" ;;
           4,*.*.*.*/*)    echo "$addr # $iface${note:+ ($note)}" ;;
