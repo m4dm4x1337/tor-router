@@ -43,7 +43,7 @@ sysctl_up() {
 
 sysctl_down() {
 
-  local inet= iface= parameter= value= note= path= key=
+  local inet= iface= parameter= value= note= path= key= stderr=
 
   if stderr=$(
     sysctl_iter "$SYSCTL_DOWN" |
