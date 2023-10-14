@@ -1,6 +1,3 @@
-#SCRIPTNAME="${SCRIPTPATH##*/}"
-#SCRIPTDIR="${SCRIPTPATH%/*}"
-
 iterate() { # $1=input
 
   local IFS="$( printf ';,\n\r' )"
@@ -24,4 +21,3 @@ iterate() { # $1=input
 
   done
 }
-
