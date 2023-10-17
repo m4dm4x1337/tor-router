@@ -47,20 +47,21 @@ iptables_up() {
 
 iptables_make() { # $1=inet (4/6)
 
-  local inet=$1 virt_addr=$( get_virtual_addr$1 )
+  local inet=$1
+  local virt_addr=$( get_virtual_addr$1 )
+  local server_addr=$( get_server_addr$1 )
+  local server_interface=$( interface_addr_to_name $server_addr )
 
   case $inet in
     4)
-      local lo_addr=127.0.0.1
-      local lo_addr_wrapped=$lo_addr
+      local server_addr_wrapped=$server_addr
       local net_prohibited=icmp-net-prohibited
       local net_unreachable=icmp-net-unreachable
       local port_unreachable=icmp-port-unreachable
       local proto_unreachable=icmp-proto-unreachable
     ;;
     6)
-      local lo_addr=::1
-      local lo_addr_wrapped="[$lo_addr]"
+      local server_addr_wrapped="[$server_addr]"
       local net_prohibited=icmp6-adm-prohibited
       local net_unreachable=icmp6-addr-unreachable
       local port_unreachable=icmp6-port-unreachable
@@ -96,17 +97,17 @@ cat << EOF | iptables_filter $1
 :TR_POSTROUTING - [0:0]
 -A TR_PREROUTING ! -d $virt_addr -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
 -A TR_PREROUTING ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j ACCEPT
--A TR_PREROUTING -p udp --dport 53 -j DNAT --to-destination $lo_addr_wrapped:${DNS_PORT:-8053}
+-A TR_PREROUTING -p udp --dport 53 -j DNAT --to-destination $server_addr_wrapped:${DNS_PORT:-8053}
 -A TR_PREROUTING -p tcp --syn -m set --match-set TR_DPORTS dst -j LOG --log-prefix "TR_PREROUTING->NEW: " --log-uid
--A TR_PREROUTING -p tcp --syn -m set --match-set TR_DPORTS dst -j DNAT --to-destination $lo_addr_wrapped:${TRANS_PORT:-8040}
+-A TR_PREROUTING -p tcp --syn -m set --match-set TR_DPORTS dst -j DNAT --to-destination $server_addr_wrapped:${TRANS_PORT:-8040}
 -A TR_OUTPUT -m owner --uid-owner debian-tor -j ACCEPT
 #-A TR_OUTPUT -p udp --dport 53 -j REDIRECT --to-ports ${DNS_PORT:-8053}
--A TR_OUTPUT -p udp --dport 53 -j DNAT --to-destination $lo_addr_wrapped:${DNS_PORT:-8053}
+-A TR_OUTPUT -p udp --dport 53 -j DNAT --to-destination $server_addr_wrapped:${DNS_PORT:-8053}
 -A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
 -A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j ACCEPT
 -A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j LOG --log-prefix "TR_OUTPUT->NEW: " --log-uid
 #-A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j REDIRECT --to-ports ${TRANS_PORT:-8040}
--A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j DNAT --to-destination $lo_addr_wrapped:${TRANS_PORT:-8040}
+-A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j DNAT --to-destination $server_addr_wrapped:${TRANS_PORT:-8040}
 -A TR_POSTROUTING ! -o lo -m set --match-set TR_WHITELIST$inet src -j MASQUERADE
 -I PREROUTING -j TR_PREROUTING
 -I OUTPUT -j TR_OUTPUT
@@ -137,8 +138,8 @@ COMMIT
 -A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_LPORTS src -j ACCEPT
 -A TR_OUTPUT -m conntrack --ctstate INVALID -j DROP
 -A TR_OUTPUT -m state --state INVALID -j DROP
--A TR_OUTPUT ! -s $lo_addr ! -d $lo_addr ! -o lo -p tcp --tcp-flags FIN,ACK FIN,ACK -j DROP
--A TR_OUTPUT ! -s $lo_addr ! -d $lo_addr ! -o lo -p tcp --tcp-flags RST,ACK RST,ACK -j DROP
+-A TR_OUTPUT ! -s $server_addr ! -d $server_addr ! -o $server_interface -p tcp --tcp-flags FIN,ACK FIN,ACK -j DROP
+-A TR_OUTPUT ! -s $server_addr ! -d $server_addr ! -o $server_interface -p tcp --tcp-flags RST,ACK RST,ACK -j DROP
 -A TR_OUTPUT -p tcp -m set --match-set TR_DPORTS dst -m owner --uid-owner debian-tor -j ACCEPT
 -A TR_OUTPUT -p tcp -m set --match-set TR_DPORTS dst -j REJECT --reject-with tcp-reset
 -A TR_OUTPUT -m state --state NEW -j LOG --log-prefix "TR_OUTPUT->REJECT: " --log-uid
@@ -169,7 +170,8 @@ iptables_filter() { # $1=inet (4/6)
     grep -vF -- '->REJECT:'
   else
     cat
-  fi | sed '/^#/d'
+  fi |
+    sed '/^#/d'
 }
 
 iptables_error_log() { # $1=tag

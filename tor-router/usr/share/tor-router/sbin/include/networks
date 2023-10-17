@@ -36,7 +36,7 @@ get_networks() { # $1=input $2=inet (4/6) $3=callback (get_auto_blacklist/get_au
   done
 }
 
-get_auto_blacklist() { # $1=inet (4/6)
+get_auto_blacklist() { # $1=inet (4/6) $2=usernote
 
   {
 
@@ -47,14 +47,14 @@ get_auto_blacklist() { # $1=inet (4/6)
   } |
   while IFS="#$IFS" read -r cidr note; do
     case $1 in
-      4) echo "`cidr4_expand $cidr`${note:+ # $note}" ;; # ipset expads ipv4 addresses incorrect
-      *) echo "$cidr${note:+ # $note}" ;;
+      4) echo "`cidr4_expand $cidr`${note:+ # $note}${2:+ ($2)}" ;; # ipset expads ipv4 addresses incorrect
+      *) echo "$cidr${note:+ # $note}${2:+ ($2)}" ;;
     esac
   done
 
 }
 
-get_auto_whitelist() { # $1=inet (4/6) $2=note
+get_auto_whitelist() { # $1=inet (4/6) $2=usernote
 
   local iface= state= addrlist= addr=
 
@@ -63,15 +63,22 @@ get_auto_whitelist() { # $1=inet (4/6) $2=note
     if interface_is_managed $iface; then
       for addr in $addrlist; do
         case $1,$addr in
-          6,*:*:*/*)      echo "$addr # $iface${note:+ ($note)}" ;;
-          6,*:*:*)        echo "$addr/128 # $iface${note:+ ($note)}" ;;
-          4,*.*.*.*/*)    echo "$addr # $iface${note:+ ($note)}" ;;
-          4,*.*.*.*)      echo "$addr/32 # $iface${note:+ ($note)}" ;;
+          6,[Ff][Ee]80:*:*) continue ;;
+          6,*:*:*/*)      echo "$addr # $iface${2:+ ($2)}" ;;
+          6,*:*:*)        echo "$addr/128 # $iface${2:+ ($2)}" ;;
+          4,*.*.*.*/*)    echo "$addr # $iface${2:+ ($2)}" ;;
+          4,*.*.*.*)      echo "$addr/32 # $iface${2:+ ($2)}" ;;
         esac
       done
     fi
   done
 
+  if [ "$1" = "6" ]; then
+    if tor_router_has_ipv6_support_enabled; then
+      echo "fe80::/64 # Link-local${2:+ ($2)}"
+      echo "ff00::/8 # Multicast${2:+ ($2)}"
+    fi
+  fi
 }
 
 get_private_networks4() {
@@ -121,5 +128,9 @@ cat << EOF
 2001:db8::/32     # used in documentation (corresponding to 192.0.2.0/24, 198.51.100.0/24, and 203.0.113.0/24 in IPv4)
 2002::/16         # was used for 6to4 addressing (an address from the IPv4 network 192.88.99.0/24 was also used, now deprecated)
 ff00::/8          # multicast address
+0000::/3          # non-global range 1 of 3 (Ensures a quick response to the network client in the event of a connection attempt)
+4000::/2          # non-global range 2 of 3 (Ensures a quick response to the network client in the event of a connection attempt)
+8000::/1          # non-global range 3 of 3 (Ensures a quick response to the network client in the event of a connection attempt)
 EOF
 }
+

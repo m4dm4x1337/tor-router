@@ -37,17 +37,27 @@
 # run: journalctl -aelq -u tor-router -n 1000 --no-pager _SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value tor-router)"
 # VERBOSE=no
 
-# Tor's VirtualAddrNetworkIPv4 and VirtualAddrNetworkIPv6 (use @AUTO to choose the address automatically)
+# IPv4 address range for .onion sites (By default 127.192.0.0/10, in router mode 10.192.0.0/10)
 # VIRTUAL_ADDR4=@AUTO
+
+# IPv6 address range for .onion sites (By default fcc0::/16, in router mode also fcc0::/16)
 # VIRTUAL_ADDR6=@AUTO
 
-# Tor-Router SocksPort
+# Address to listen for transparent IPv4 proxy connections (127.0.0.1 by default)
+# SERVER_ADDR4=@AUTO
+
+# Address to listen for transparent IPv6 proxy connections (::1 if IPv6 forwarding is disabled otherwise the address of the default interface by default)
+# NOTE: Forwarding to ::1 is not possible (RFC 4291 2.5.3), so the IP of the standard interface is required in router mode, alternatively use "::2":
+# ip link add tor type dummy && ip -6 addr add ::2 dev tor && ip link set tor up
+# SERVER_ADDR6=@AUTO
+
+# Port to listen for connections from SOCKS-speaking applications (8050 by default)
 # SOCKS_PORT=8050
 
-# Tor-Router TransPort
+# Port to listen for transparent proxy connections (8040 by default)
 # TRANS_PORT=8040
 
-# Tor-Router DNSPort
+# Port to listen for UDP DNS requests (8053 by default)
 # DNS_PORT=8053
 
 # Exclude nodes with unknown geo IP location (0/1)

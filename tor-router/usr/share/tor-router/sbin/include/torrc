@@ -15,20 +15,27 @@ torrc_up() {
 }
 
 torrc_make() {
+
+  local server_addr4=$( get_server_addr4 )
+  local server_addr6=$( get_server_addr6 )
+
+  local virtual_addr4=$( get_virtual_addr4 )
+  local virtual_addr6=$( get_virtual_addr6 )
+
 cat << TORRC | torrc_filter
-VirtualAddrNetworkIPv4 `get_virtual_addr4`
-VirtualAddrNetworkIPv6 `get_virtual_addr6`
+VirtualAddrNetworkIPv4 $virtual_addr4
+VirtualAddrNetworkIPv6 $virtual_addr6
 AutomapHostsOnResolve 1
 ClientUseIPv4 1
 ClientUseIPv6 1
 
-SocksPort 127.0.0.1:${SOCKS_PORT:-8050} NoIPv6Traffic
-TransPort 127.0.0.1:${TRANS_PORT:-8040} NoIPv6Traffic
-DNSPort 127.0.0.1:${DNS_PORT:-8053} NoIPv6Traffic
+SocksPort $server_addr4:${SOCKS_PORT:-8050} NoIPv6Traffic
+TransPort $server_addr4:${TRANS_PORT:-8040} NoIPv6Traffic
+DNSPort $server_addr4:${DNS_PORT:-8053} NoIPv6Traffic
 
-SocksPort [::1]:${SOCKS_PORT:-8050} NoIPv6Traffic
-TransPort [::1]:${TRANS_PORT:-8040} NoIPv6Traffic
-DNSPort [::1]:${DNS_PORT:-8053} NoIPv6Traffic
+SocksPort [$server_addr6]:${SOCKS_PORT:-8050} NoIPv6Traffic
+TransPort [$server_addr6]:${TRANS_PORT:-8040} NoIPv6Traffic
+DNSPort [$server_addr6]:${DNS_PORT:-8053} NoIPv6Traffic
 
 GeoIPExcludeUnknown ${GEOIP_EXCLUDE_UNKNOWN:-0}
 StrictNodes ${STRICT_NODES:-0}
@@ -42,11 +49,15 @@ TORRC
 
 torrc_filter(){
   if ! tor_router_has_ipv6_support_enabled;  then
-    grep -vF -e :: -e ClientUseIPv6
+    grep -vF -e ']:' -e ClientUseIPv6 -e VirtualAddrNetworkIPv6
   elif tor_router_has_ipv6_preference_enabled; then
     sed 's/NoIPv6Traffic/IPv6Traffic PreferIPv6 PreferIPv6Automap/'
   else
     sed 's/NoIPv6Traffic/IPv6Traffic/'
+  fi | if routing_trick_is_up; then
+    grep -vF ClientUseIPv6
+  else
+    cat -
   fi |
     sed -E 's/^(TransPort\s+\S+)((\s+PreferIPv6Automap)|\s+\S+)*\s*$/\1\3/g' |
       grep -vxF ''
@@ -74,7 +85,7 @@ torrc_highlight() {
 
   sed -E "
     s/^([A-Za-z_][0-9A-Za-z_]*)\b/${w}\1${_}/
-    s/(\s)([A-Za-z_][0-9A-Za-z_]*)\b/\1${m}\2${_}/
+    s/(\s)([A-Za-z_][0-9A-Za-z_]*)\b/\1${m}\2${_}/g
     s/(\s)(\S*:\S*:\S*|\S+\.\S+\.\S+)([\:])([0-9]+)/\1${b}\2${_}${r}\3${_}${c}\4${_}/g # IP
     s/(\s)(\S+)(\/)([0-9]+)/\1${b}\2${_}${r}\3${_}${c}\4${_}/g # CIDR
     s/(\s)(0)$/\1${g}\2${_}/

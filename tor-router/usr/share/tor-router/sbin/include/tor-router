@@ -78,6 +78,33 @@ get_whitelist() { # $1=inet (4/6)
     "$1" get_auto_whitelist
 }
 
+get_server_addr4() {
+  if [ "${SERVER_ADDR4:-@AUTO}" = "@AUTO" ]; then
+    echo 127.0.0.1
+  else
+    echo $SERVER_ADDR4
+  fi
+}
+
+get_server_addr6() {
+  local iface= addr=
+  if [ "${SERVER_ADDR6:-@AUTO}" = "@AUTO" ]; then
+    if ! tor_router_has_ipv6_forwarding_enabled; then
+      echo ::1
+    elif ! iface=$( interface_get_default_name 6 || interface_get_default_name 4 ); then
+      echo "[WARNING] No default interface found" >&2
+      echo ::1
+    elif ! addr=$( interface_get_default_addr 6 "$iface" ); then
+      echo "[WARNING] No ipv6 address found on interface '$iface', forwarding will not work" >&2
+      echo ::1
+    else
+      echo ${addr%%/*}
+    fi
+  else
+    echo $SERVER_ADDR6
+  fi
+}
+
 get_virtual_addr4() {
   if [ "${VIRTUAL_ADDR4:-@AUTO}" = "@AUTO" ]; then
     if tor_router_has_ipv4_forwarding_enabled; then
