@@ -89,6 +89,8 @@ The Tor-Router configuration can be customized by editing the `/etc/default/tor-
 
 - **VIRTUAL_ADDR4** and **VIRTUAL_ADDR6** (Tor's VirtualAddrNetworkIPv4 and VirtualAddrNetworkIPv6): Use `@AUTO` to automatically choose the address. These variables specify the virtual address networks for Tor.
 
+- **SERVER_ADDR4** and **SERVER_ADDR6** (Address to listen for transparent proxy connections): Use `@AUTO` to automatically choose the address.
+
 - **SOCKS_PORT** (Tor-Router SocksPort): Port number 8050 is used by default.
 
 - **TRANS_PORT** (Tor-Router TransPort): Port number 8040 is used by default.
