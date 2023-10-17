@@ -27,17 +27,18 @@ routing_down() {
 }
 
 routing_trick_up() {
-  ip -6 route add dev lo table local proto static metric 1024 local default pref medium || true
+  ip -6 route add local 2000::/3 dev lo table local proto static metric 1024 pref medium || true
 }
 
 routing_trick_down() {
-  ip -6 route del dev lo table local proto static metric 1024 local default pref medium || true
+  ip -6 route del local 2000::/3 dev lo table local proto static metric 1024 pref medium || true
 }
 
 routing_trick_is_up() {
-  ip -6 route show default dev lo table local proto static metric 1024 | grep -q -m1 -wF 'local default'
+  ip -6 route show 2000::/3 dev lo table local proto static metric 1024 type local | grep -q -m1 -wF 'local 2000::/3'
 }
 
 routing_ipv6_is_possible() {
   ip -6 route get 2001:4860:4860::8888 >/dev/null 2>&1 # check if there is a ipv6 route to the google DNS server
 }
+
