@@ -46,7 +46,7 @@
 # Address to listen for transparent IPv4 proxy connections (127.0.0.1 by default)
 # SERVER_ADDR4=@AUTO
 
-# Address to listen for transparent IPv6 proxy connections (::1 if IPv6 forwarding is disabled otherwise the address of the default interface by default)
+# Address to listen for transparent IPv6 proxy connections (By default ::1 if IPv6 forwarding is disabled otherwise the address of the default interface)
 # NOTE: Forwarding to ::1 is not possible (RFC 4291 2.5.3), so the IP of the standard interface is required in router mode, alternatively use "::2":
 # ip link add tor type dummy && ip -6 addr add ::2 dev tor && ip link set tor up
 # SERVER_ADDR6=@AUTO
