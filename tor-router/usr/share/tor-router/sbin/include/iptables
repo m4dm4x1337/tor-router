@@ -95,9 +95,9 @@ cat << EOF | iptables_filter $1
 :TR_PREROUTING - [0:0]
 :TR_OUTPUT - [0:0]
 :TR_POSTROUTING - [0:0]
+-A TR_PREROUTING -p udp --dport 53 -j DNAT --to-destination $server_addr_wrapped:${DNS_PORT:-8053}
 -A TR_PREROUTING ! -d $virt_addr -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
 -A TR_PREROUTING ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j ACCEPT
--A TR_PREROUTING -p udp --dport 53 -j DNAT --to-destination $server_addr_wrapped:${DNS_PORT:-8053}
 -A TR_PREROUTING -p tcp --syn -m set --match-set TR_DPORTS dst -j LOG --log-prefix "TR_PREROUTING->NEW: " --log-uid
 -A TR_PREROUTING -p tcp --syn -m set --match-set TR_DPORTS dst -j DNAT --to-destination $server_addr_wrapped:${TRANS_PORT:-8040}
 -A TR_OUTPUT -m owner --uid-owner debian-tor -j ACCEPT
