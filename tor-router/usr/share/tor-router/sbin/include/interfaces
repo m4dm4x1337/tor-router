@@ -14,7 +14,7 @@ interface_addr_to_name() { # $1 = addr
 }
 
 interface_get_default_addr() { # $1 = inet (4/6) $2 = interface (optional)
-  ip -$1 -br addr show dev "${2:-`interface_get_default_name`}" | {
+  ip -$1 -br addr show dev "${2:-`interface_get_default`}" | {
     local iface= state= addresses= addr=
     if read -r iface state addresses; then
       addr="${addresses%%[[:space:]]*}"
@@ -28,19 +28,52 @@ interface_get_default_addr() { # $1 = inet (4/6) $2 = interface (optional)
   }
 }
 
-interface_get_default_name() { # $1 = inet (4/6)
-  ip -$1 route show default | {
-    local a= b= c= d= e= f=
-    if IFS=' ' read -r a b c d e f; then
-      case "$a,$b,$c,$d,$e,$f" in
-        default,via,*,dev,*,*)
-          echo "$e"
+interface_has_default_gateway() { # $1 = inet (4/6) $2 = iface
+  ip -$1 route show default dev "$2" | {
+    local a= b= c=
+    while IFS=' ' read -r a b c; do
+      case "$a,$b,$c" in
+        default,via,*)
           return 0
         ;;
       esac
-    fi
+    done
     return 1
   }
+}
+
+interface_get_default() { # $1 = inet (4/6)
+
+  local file= ethernet= wireless= virtual=
+
+  local -
+
+  set +f
+
+  for file in /sys/class/net/*; do
+    if interface_has_default_gateway "$1" "${file##*/}"; then
+      if [ -e "$file/device" ]; then
+        if [ -e "$file/wireless" ]; then
+          wireless="${wireless:+$wireless }${file##*/}"
+        else
+          ethernet="${ethernet:+$ethernet }${file##*/}"
+        fi
+      else
+        virtual="${virtual:+$virtual }${file##*/}"
+      fi
+    fi
+  done
+
+  if [ -n "$ethernet" ]; then
+    echo "${ethernet%%[[:space:]]*}"
+  elif [ -n "$wireless" ]; then
+    echo "${wireless%%[[:space:]]*}"
+  elif [ -n "$virtual" ]; then
+    echo "${virtual%%[[:space:]]*}"
+  else
+    return 1
+  fi
+
 }
 
 interface_is_managed() { # $1=interface

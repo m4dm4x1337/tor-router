@@ -91,7 +91,7 @@ get_server_addr6() {
   if [ "${SERVER_ADDR6:-@AUTO}" = "@AUTO" ]; then
     if ! tor_router_has_ipv6_forwarding_enabled; then
       echo ::1
-    elif ! iface=$( interface_get_default_name 6 || interface_get_default_name 4 ); then
+    elif ! iface=$( interface_get_default 6 || interface_get_default 4 ); then
       echo "[WARNING] No default interface found" >&2
       echo ::1
     elif ! addr=$( interface_get_default_addr 6 "$iface" ); then
