@@ -73,10 +73,6 @@ routing_error_log() {
 
 routing_verbose_log() {
   if tor_router_has_verbose_logging_enabled; then
-#   while IFS= read -r line; do
-#     printf '%s\n' "$line" | iptables_highlight "[IP6]" >&2
-#     printf '%s\n' "$line"
-#   done
     { tee /dev/stderr 2>&3 | routing_highlight "[IP6]" ; } 3>&1 1>&2
   else
     cat -

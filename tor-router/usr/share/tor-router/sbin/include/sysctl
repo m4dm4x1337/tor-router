@@ -190,9 +190,6 @@ sysctl_error_log() {
 
 sysctl_verbose_log() {
   if tor_router_has_verbose_logging_enabled; then
-#   while IFS= read -r line; do
-#     printf '%s\n' "$line" | sysctl_highlight "[SYSCTL]" >&2
-#   done
     { tee /dev/stderr 2>&3 | sysctl_highlight '[SYSCTL]' ; } 3>/dev/null 1>&2
   fi
 }
