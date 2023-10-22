@@ -1,4 +1,4 @@
-interface_addr_to_name() { # $1 = addr
+interface_from_addr() { # $1 = addr
   ip -br addr show | {
     local iface= state= addrlist= addr=
     while read -r iface state addrlist; do

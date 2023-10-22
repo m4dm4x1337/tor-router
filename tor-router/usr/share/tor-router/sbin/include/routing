@@ -42,7 +42,7 @@ routing_make_up() {
 
   local virt_addr=$( get_virtual_addr6 )
   local server_addr=$( get_server_addr6 )
-  local server_interface=$( interface_addr_to_name $server_addr )
+  local server_interface=$( interface_from_addr $server_addr || echo lo )
 
 cat << RULES
 route add 2000::/3 table tor-router dev $server_interface
