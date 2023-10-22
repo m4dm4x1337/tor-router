@@ -21,8 +21,8 @@
 set -e
 
 if ! command -v dig >/dev/null 2>&1; then
-    echo "dig is not installed" >&2
-    exit 1
+  echo "Please install dig: apt-get install dnsutils" >&2
+  exit 1
 fi
 
 dig @2620:119:35::35 \
