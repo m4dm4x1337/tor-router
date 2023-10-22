@@ -70,6 +70,7 @@
 # ENTRY_NODES=
 
 # Use specific countries as exit nodes (Example: {ch},{at},{de})
+# To get a exit node statistic run: /usr/share/tor-router/sbin/netinfo
 # EXIT_NODES=
 
 # Exclude nodes in specific countries (Example: {us},{au},{ca},{nz},{gb})
