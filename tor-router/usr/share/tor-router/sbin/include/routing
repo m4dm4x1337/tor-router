@@ -59,7 +59,7 @@ RULES
 }
 
 routing_trick_is_up() {
-  ip -6 route show table tor-router 2>/dev/null || true | grep -q -m1 -wF dev ||
+  ip -6 route show table tor-router | grep -q -m1 -wF dev ||
   ip -6 rule show pref 8040 | grep -q -m1 -wF tor-router
 }
 
