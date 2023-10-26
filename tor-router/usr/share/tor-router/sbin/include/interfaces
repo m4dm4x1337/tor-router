@@ -14,14 +14,14 @@ interface_from_addr() { # $1 = addr
 }
 
 interface_get_default_addr() { # $1 = inet (4/6) $2 = interface (optional)
-  ip -$1 -br addr show dev "${2:-`interface_get_default`}" | {
+  ip -$1 -br addr show dev "${2:-`interface_get_default $1`}" | {
     local iface= state= addresses= addr=
     if read -r iface state addresses; then
       addr="${addresses%%[[:space:]]*}"
       if [ -z $addr ]; then
         return 1
       fi
-      echo "$addr"
+      echo ${addr%%/*}
     else
       return 1
     fi

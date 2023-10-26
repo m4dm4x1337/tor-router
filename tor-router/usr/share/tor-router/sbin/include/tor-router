@@ -98,7 +98,7 @@ get_server_addr6() {
       echo "[WARNING] No ipv6 address found on interface '$iface', forwarding will not work" >&2
       echo ::1
     else
-      echo ${addr%%/*}
+      echo $addr
     fi
   else
     echo $SERVER_ADDR6
