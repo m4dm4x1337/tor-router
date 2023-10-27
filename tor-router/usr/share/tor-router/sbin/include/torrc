@@ -69,10 +69,6 @@ torrc_error_log() {
 
 torrc_verbose_log() {
   if tor_router_has_verbose_logging_enabled; then
-#   while IFS= read -r line; do
-#     printf '%s\n' "$line" | torrc_highlight "[TORRC]" >&2
-#     printf '%s\n' "$line"
-#   done
     { tee /dev/stderr 2>&3 | torrc_highlight "[TORRC]" ; } 3>&1 1>&2
   else
     cat -
