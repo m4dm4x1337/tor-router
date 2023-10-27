@@ -54,7 +54,7 @@ torrc_filter(){
     sed 's/NoIPv6Traffic/IPv6Traffic PreferIPv6 PreferIPv6Automap/'
   else
     sed 's/NoIPv6Traffic/IPv6Traffic/'
-  fi | if routing_trick_is_up; then
+  fi | if kernel_has_ipv6_support && routing_trick_is_up; then
     grep -vF ClientUseIPv6
   else
     cat -

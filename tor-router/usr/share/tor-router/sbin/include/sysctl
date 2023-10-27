@@ -3,11 +3,13 @@ kernel_has_ipv6_support() {
 }
 
 kernel_has_ipv6_enabled() {
-  grep -m1 -qxF 0 /proc/sys/net/ipv6/conf/default/disable_ipv6
+  [ -f /proc/sys/net/ipv6/conf/default/disable_ipv6 ] &&
+    grep -m1 -qxF 0 /proc/sys/net/ipv6/conf/default/disable_ipv6
 }
 
 kernel_has_forwarding_enabled() { # $1=inet (4/6)
-  grep -m1 -qxF 1 /proc/sys/net/ipv$1/conf/default/forwarding
+  [ -f /proc/sys/net/ipv$1/conf/default/forwarding ] &&
+    grep -m1 -qxF 1 /proc/sys/net/ipv$1/conf/default/forwarding
 }
 
 sysctl_up() {
