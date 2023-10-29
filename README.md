@@ -6,7 +6,7 @@
 
 The first use case is routing all traffic on a standalone machine through Tor. Once this is set up, every network application will make its TCP connections through Tor, ensuring that no application will be able to reveal your IP address by connecting directly.
 
-The second use case is creating an anonymizing middlebox, such as a Raspberry Pi WiFi hotspot, that intercepts traffic from other machines and redirects it through Tor.
+The second use case is creating an anonymizing middlebox, such as a [Raspberry Pi WiFi hotspot](https://github.com/m4dm4x1337/torified-wifi-hotspot), that intercepts traffic from other machines and redirects it through Tor.
 
 ## Installation
 
