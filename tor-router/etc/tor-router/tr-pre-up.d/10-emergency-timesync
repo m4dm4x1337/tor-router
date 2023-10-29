@@ -1,0 +1,105 @@
+# Root-owned executable files in /etc/tor-router/tr-pre-up.d/ 
+# are sourced before the firewall rules are added.
+
+# This plugin corrects the system time if there are significant 
+# deviations, otherwise HTTPS connections are not possible and 
+# the system would then remain offline forever.
+
+do_get_header() {
+  if command -v wget >/dev/null 2>&1; then
+    wget \
+      --quiet \
+      --spider \
+      --server-response \
+      --timeout=5 \
+      --tries=1 \
+      --output-document=/dev/null \
+      http://www.google.com 2>&1
+  elif command -v curl >/dev/null 2>&1; then
+    curl \
+      --silent \
+      --head \
+      --connect-timeout 5 \
+      --max-time 5 \
+      --retry 1 \
+      http://www.google.com 2>&1
+  elif command -v nc >/dev/null 2>&1; then
+    printf \
+      '%s\r\n%s\r\n\r\n' \
+      'HEAD / HTTP/1.0' \
+      'Host: www.google.com' |
+    nc \
+      -w 5 \
+      www.google.com 80 2>&1
+  else
+    return 1
+  fi
+}
+
+do_get_http_date() {
+  do_get_header | {
+    local line=
+    while IFS='' read -r line; do
+      line="${line#"${line%%[![:space:]]*}"}" # ltrim
+      line="${line%"${line##*[![:space:]]}"}" # rtrim
+      case "$line" in
+        [Dd][Aa][Tt][Ee]:*)
+          echo ${line#[Dd][Aa][Tt][Ee]:}
+          return 0
+        ;;
+      esac
+    done
+    return 1
+  }
+}
+
+do_get_system_date() {
+  LANG=C date \
+    --utc \
+    +'%a, %d %b %Y %H:%M:%S GMT'
+}
+
+do_get_timestamp() { # $1 = date
+  LANG=C date \
+    --utc \
+    --date="$1" \
+    +'%s'
+}
+
+do_set_time() { # $1 = time
+  LANG=C date \
+    --utc \
+    --set="@$1" \
+    +'%a, %d %b %Y %H:%M:%S GMT'
+}
+
+echo
+echo "This plugin corrects the system time if there are significant "
+echo "deviations, otherwise HTTPS connections are not possible and "
+echo "the system would then remain offline forever."
+echo
+
+if ! HTTP_DATE=$(do_get_http_date); then
+  echo "HTTP date could not be determined." >&2
+elif ! HTTP_TIME=$(do_get_timestamp "$HTTP_DATE"); then
+  echo "HTTP time could not be determined." >&2
+elif ! SYSTEM_DATE=$(do_get_system_date); then
+  echo "System date could not be determined." >&2
+elif ! SYSTEM_TIME=$(do_get_timestamp "$SYSTEM_DATE"); then
+  echo "System time could not be determined." >&2
+elif ! OFFSET=$(( SYSTEM_TIME - HTTP_TIME )); then
+  echo "Time offset could not be determined." >&2
+else
+  echo "  HTTP DATE: $HTTP_DATE (@$HTTP_TIME)"
+  echo "SYSTEM DATE: $SYSTEM_DATE (@$SYSTEM_TIME)"
+  echo "TIME OFFSET: $OFFSET seconds"
+  echo "SYNC RESULT: $([ ${OFFSET#-} -le 15 ] && echo No timesync needed || do_set_time $HTTP_TIME)"
+fi
+
+echo
+
+unset HTTP_DATE
+unset HTTP_TIME
+unset SYSTEM_DATE
+unset SYSTEM_TIME
+unset OFFSET
