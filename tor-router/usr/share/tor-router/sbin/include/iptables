@@ -125,7 +125,7 @@ COMMIT
 -A TR_INPUT -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
 -A TR_INPUT -p tcp --syn -m set --match-set TR_LPORTS dst -j LOG --log-prefix "TR_INPUT->NEW: " --log-uid
 -A TR_INPUT -p tcp --syn -m set --match-set TR_LPORTS dst -j ACCEPT
--A TR_INPUT -p udp -m comment --comment DHCP --sport 67:68 --dport 67:68 -j ACCEPT
+#-A TR_INPUT -p udp -m comment --comment DHCP --sport 67:68 --dport 67:68 -j ACCEPT
 -A TR_INPUT -j LOG --log-prefix "TR_INPUT->REJECT: " --log-uid
 -A TR_INPUT -j REJECT --reject-with $port_unreachable
 -A TR_FORWARD ! -d $virt_addr -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT

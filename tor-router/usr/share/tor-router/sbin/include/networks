@@ -73,12 +73,18 @@ get_auto_whitelist() { # $1=inet (4/6) $2=usernote
     fi
   done
 
-  if [ "$1" = "6" ]; then
-    if tor_router_has_ipv6_support_enabled; then
-      echo "fe80::/64 # Link-local${2:+ ($2)}"
-      echo "ff00::/8 # Multicast${2:+ ($2)}"
-    fi
-  fi
+  case "$1" in
+    4)
+      echo "0.0.0.0/32 # DHCP${2:+ ($2)}"
+      echo "255.255.255.255/32 # DHCP${2:+ ($2)}"
+      ;;
+    6)
+      if tor_router_has_ipv6_support_enabled; then
+        echo "fe80::/64 # Link-local${2:+ ($2)}"
+        echo "ff00::/8 # Multicast${2:+ ($2)}"
+      fi
+      ;;
+  esac
 }
 
 get_private_networks4() {
