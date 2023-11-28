@@ -3,7 +3,7 @@
 
 # This plugin restores the network settings
 
-set -x
+set -v
 
 echo 262144 > /proc/sys/fs/file-max ||: # 9223372036854775807
 echo fq_codel > /proc/sys/net/core/default_qdisc ||:
@@ -35,4 +35,4 @@ echo 120 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_time_wait ||:
 echo 30 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout ||:
 echo 120 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream ||:
 
-set +x
+set +v

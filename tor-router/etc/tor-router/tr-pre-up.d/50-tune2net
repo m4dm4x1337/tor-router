@@ -3,7 +3,7 @@
 
 # This plugin optimizes the network settings
 
-set -x
+set -v
 
 echo 51200 > /proc/sys/fs/file-max ||:
 echo fq > /proc/sys/net/core/default_qdisc ||:
@@ -35,4 +35,4 @@ echo 60 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_time_wait ||:
 echo 15 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout ||:
 echo 60 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream ||:
 
-set +x
+set +v
