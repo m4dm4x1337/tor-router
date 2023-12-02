@@ -103,7 +103,7 @@ cat << EOF | iptables_filter $1
 -A TR_OUTPUT -m owner --uid-owner debian-tor -j ACCEPT
 #-A TR_OUTPUT -p udp --dport 53 -j REDIRECT --to-ports ${DNS_PORT:-8053}
 -A TR_OUTPUT -p udp --dport 53 -j DNAT --to-destination $server_addr_wrapped:${DNS_PORT:-8053}
--A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
+-A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_WHITELIST$inet src -m set --match-set TR_WHITELIST$inet dst -j ACCEPT
 -A TR_OUTPUT ! -d $virt_addr -m set --match-set TR_BLACKLIST$inet dst -j ACCEPT
 -A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j LOG --log-prefix "TR_OUTPUT->NEW: " --log-uid
 #-A TR_OUTPUT -p tcp --syn -m set --match-set TR_DPORTS dst -j REDIRECT --to-ports ${TRANS_PORT:-8040}
