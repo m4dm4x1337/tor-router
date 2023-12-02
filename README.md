@@ -85,7 +85,7 @@ The Tor-Router configuration can be customized by editing the `/etc/default/tor-
 
 - **REJECT_LOG** (Log rejected connections): Set to "yes" or "no" to log rejected connections to `/var/log/tor-router/`.
 
-- **VERBOSE** (Log iptables rules, ipset rules, and sysctl changes): Set to "yes" or "no" to enable or disable verbose logging. This logs detailed information about iptables rules, ipset rules, and sysctl changes.
+- **QUIET** (Don't log iptables rules, ipset rules, sysctl changes and plugin output): Set to "yes" to disable verbose logging.
 
 - **VIRTUAL_ADDR4** and **VIRTUAL_ADDR6** (Tor's VirtualAddrNetworkIPv4 and VirtualAddrNetworkIPv6): Use `@AUTO` to automatically choose the address. These variables specify the virtual address networks for Tor.
 

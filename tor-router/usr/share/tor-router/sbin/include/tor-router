@@ -34,30 +34,26 @@ tor_router_down() {
 
 tor_router_include() { # $1 = plugin dir
 
-  local file=
+  local file= fifo=/dev/null
 
   if [ -d "/etc/tor-router/$1/" ]; then
     for file in "/etc/tor-router/$1/"*; do
       if [ -x "$file" ] && [ $(stat -c %U "$file") = "root" ]; then
-
-#       . "$file" 2>&1 | sed "s/^.*$/\x1b[1;30m[${file##*/}]\x1b[0m \0/" >&2 ||
-#         echo "[WARNING] sourcing file '$1' has failed" >&2
-
-        mkfifo /var/run/tor-router/tor-router.fifo
-
-        sed "s/^.*$/\x1b[1;30m[${file##*/}]\x1b[0m \0/" \
-          /var/run/tor-router/tor-router.fifo >&2 &
-
-        if ! . "$file" > /var/run/tor-router/tor-router.fifo 2>&1; then
+        if tor_router_has_verbose_logging_enabled; then
+          fifo=/var/run/tor-router/tor-router.fifo
+          rm -f "$fifo"
+          mkfifo "$fifo"
+          sed "s/^.*$/\x1b[1;30m[${file##*/}]\x1b[0m \0/" "$fifo" >&2 &
+        fi
+        if ! . "$file" > "$fifo" 2>&1; then
           echo "[WARNING] sourcing file '$1' has failed" >&2
         fi
-
-        rm /var/run/tor-router/tor-router.fifo
-
+        if [ -p "$fifo" ]; then
+          rm -f "$fifo"
+        fi
       fi
     done
   fi
-
 }
 
 get_dports() {
@@ -153,7 +149,7 @@ tor_router_has_reject_logging_enabled() {
 }
 
 tor_router_has_verbose_logging_enabled() {
-  tor_router_has_option_enabled "${VERBOSE:-no}"
+  ! tor_router_has_option_enabled "${QUIET:-no}"
 }
 
 tor_router_has_ipv4_forwarding_enabled() {

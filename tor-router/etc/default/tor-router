@@ -33,9 +33,9 @@
 # Log rejected connections to /var/log/tor-router/ (yes/no)
 # REJECT_LOG=no
 
-# Log iptables rules, ipset rules and sysctl changes to stderr when tor-router starts/stops To view the verbose logs since the last start, 
+# Don't log iptables rules, ipset rules, sysctl changes and plugin output to stderr when tor-router starts/stops. To view the logs since the last start, 
 # run: journalctl -aelq -u tor-router -n 1000 --no-pager _SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value tor-router)"
-# VERBOSE=no
+# QUIET=no
 
 # IPv4 address range for .onion sites (By default 127.192.0.0/10, in router mode 10.192.0.0/10)
 # VIRTUAL_ADDR4=@AUTO
