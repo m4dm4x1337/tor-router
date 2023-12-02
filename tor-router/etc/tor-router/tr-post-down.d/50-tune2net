@@ -3,6 +3,10 @@
 
 # This plugin restores the network settings
 
+echo
+echo "This plugin restores the network settings"
+echo
+
 set -v
 
 echo 262144 > /proc/sys/fs/file-max ||: # 9223372036854775807

@@ -3,6 +3,10 @@
 
 # This plugin optimizes the network settings
 
+echo
+echo "This plugin optimizes the network settings"
+echo
+
 set -v
 
 echo 51200 > /proc/sys/fs/file-max ||:
