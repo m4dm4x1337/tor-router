@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ -x /etc/tor-router/tr-pre-up.d/10-timesync ]; then
+  . /etc/tor-router/tr-pre-up.d/10-timesync \
+    1>/var/log/tor-router/timesync.log \
+    2>/var/log/tor-router/timesync.err
+fi
