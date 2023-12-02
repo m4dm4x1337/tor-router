@@ -1,0 +1,25 @@
+# Root-owned executable files in /etc/tor-router/tr-pre-up.d/ 
+# are sourced before the firewall rules are added.
+
+# This plugin disables systemd services that cannot function 
+# in a TCP-only environment.
+
+SYSTEMCTL=$(command -v systemctl 2>/dev/null || true)
+
+if [ -x "$SYSTEMCTL" ]; then
+  echo
+  echo "This plugin disables systemd services that cannot function"
+  echo "in a TCP-only environment."
+  echo
+  for SERVICE in systemd-resolved.service systemd-timesyncd.service; do
+    if $SYSTEMCTL --quiet is-active $SERVICE; then
+      echo -n "$SYSTEMCTL stop $SERVICE ... "
+      if $SYSTEMCTL stop $SERVICE; then
+        echo "OK"
+      else
+        echo "FAILED"
+      fi
+      echo
+    fi
+  done
+fi
