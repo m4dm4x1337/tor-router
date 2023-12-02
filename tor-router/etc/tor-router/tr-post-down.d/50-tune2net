@@ -1,4 +1,4 @@
-# Root-owned executable files in /etc/tor-router/tr-pre-up.d/ 
+# Root-owned executable files in /etc/tor-router/tr-post-down.d/ 
 # are sourced before the firewall rules are added.
 
 # This plugin restores the network settings
