@@ -82,7 +82,7 @@ echo "the system would then remain offline forever."
 echo
 
 if ! HTTP_DATE=$(do_get_http_date 1.1.1.1); then
-  echo "HTTP date could not be determined. $HTTP_DATE" >&2
+  echo "HTTP date could not be determined." >&2
 elif ! HTTP_TIME=$(do_get_timestamp "$HTTP_DATE"); then
   echo "HTTP time could not be determined." >&2
 elif ! SYSTEM_DATE=$(do_get_system_date); then
