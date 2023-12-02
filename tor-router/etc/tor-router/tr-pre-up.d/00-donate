@@ -1,3 +1,8 @@
+# Root-owned executable files in /etc/tor-router/tr-pre-up.d/ 
+# are sourced before the firewall rules are added.
+
+# This plugin asks for a donation
+
 donation_get_title() {
 
   local heart="$( echo | sed 's/^/\xe2\x9d\xa4\xef\xb8\x8f\xc2\xa0/' )"

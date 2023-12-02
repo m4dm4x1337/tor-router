@@ -1,3 +1,8 @@
+# Root-owned executable files in /etc/tor-router/tr-pre-up.d/ 
+# are sourced before the firewall rules are added.
+
+# This plugin shows a banner
+
 banner_get_title() {
 
 cat << BANNER | sed 's/^.*$/          \x1b[1;32m\0\x1b[0m/'
