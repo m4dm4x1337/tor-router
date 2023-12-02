@@ -5,16 +5,17 @@
 # deviations, otherwise HTTPS connections are not possible and 
 # the system would then remain offline forever.
 
-do_get_header() {
+do_get_header() { # $1 = host
   if command -v wget >/dev/null 2>&1; then
     wget \
+      --no-http-keep-alive \
       --quiet \
       --spider \
       --server-response \
       --timeout=5 \
       --tries=1 \
       --output-document=/dev/null \
-      http://www.google.com 2>&1
+      http://$1 2>&1
   elif command -v curl >/dev/null 2>&1; then
     curl \
       --silent \
@@ -22,31 +23,32 @@ do_get_header() {
       --connect-timeout 5 \
       --max-time 5 \
       --retry 1 \
-      http://www.google.com 2>&1
+      http://$1 2>&1
   elif command -v nc >/dev/null 2>&1; then
     printf \
       '%s\r\n%s\r\n\r\n' \
       'HEAD / HTTP/1.0' \
-      'Host: www.google.com' |
+      "Host: $1" |
     nc \
       -w 5 \
-      www.google.com 80 2>&1
+      $1 80 2>&1
   else
     return 1
   fi
 }
 
-do_get_http_date() {
-  do_get_header | {
+do_get_http_date() { # $1 = host
+  do_get_header $1 | {
     local line=
-    while IFS='' read -r line; do
-      line="${line#"${line%%[![:space:]]*}"}" # ltrim
-      line="${line%"${line##*[![:space:]]}"}" # rtrim
+    while read -r line; do
       case "$line" in
         [Dd][Aa][Tt][Ee]:*)
           echo ${line#[Dd][Aa][Tt][Ee]:}
           return 0
-        ;;
+          ;;
+        '')
+          break
+          ;;
       esac
     done
     return 1
@@ -79,8 +81,8 @@ echo "deviations, otherwise HTTPS connections are not possible and "
 echo "the system would then remain offline forever."
 echo
 
-if ! HTTP_DATE=$(do_get_http_date); then
-  echo "HTTP date could not be determined." >&2
+if ! HTTP_DATE=$(do_get_http_date 1.1.1.1); then
+  echo "HTTP date could not be determined. $HTTP_DATE" >&2
 elif ! HTTP_TIME=$(do_get_timestamp "$HTTP_DATE"); then
   echo "HTTP time could not be determined." >&2
 elif ! SYSTEM_DATE=$(do_get_system_date); then
@@ -93,7 +95,7 @@ else
   echo "  HTTP DATE: $HTTP_DATE (@$HTTP_TIME)"
   echo "SYSTEM DATE: $SYSTEM_DATE (@$SYSTEM_TIME)"
   echo "TIME OFFSET: $OFFSET seconds"
-  echo "SYNC RESULT: $([ ${OFFSET#-} -le 15 ] && echo No timesync needed || do_set_time $HTTP_TIME)"
+  echo "SYNC RESULT: $([ ${OFFSET#-} -le 5 ] && echo No timesync needed || do_set_time $HTTP_TIME)"
 fi
 
 echo
