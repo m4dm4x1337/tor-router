@@ -140,7 +140,7 @@ COMMIT
 -A TR_OUTPUT -m state --state INVALID -j DROP
 -A TR_OUTPUT ! -s $server_addr ! -d $server_addr ! -o $server_interface -p tcp --tcp-flags FIN,ACK FIN,ACK -j DROP
 -A TR_OUTPUT ! -s $server_addr ! -d $server_addr ! -o $server_interface -p tcp --tcp-flags RST,ACK RST,ACK -j DROP
--A TR_OUTPUT -p tcp -m set --match-set TR_DPORTS dst -m owner --uid-owner debian-tor -j ACCEPT
+-A TR_OUTPUT -p tcp -m owner --uid-owner debian-tor -j ACCEPT
 -A TR_OUTPUT -p tcp -m set --match-set TR_DPORTS dst -j REJECT --reject-with tcp-reset
 -A TR_OUTPUT -m state --state NEW -j LOG --log-prefix "TR_OUTPUT->REJECT: " --log-uid
 -A TR_OUTPUT -p tcp -j REJECT --reject-with $port_unreachable
