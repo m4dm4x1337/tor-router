@@ -1,7 +1,17 @@
 #!/bin/sh
 
-if [ -x /etc/tor-router/tr-pre-up.d/10-timesync ]; then
-  . /etc/tor-router/tr-pre-up.d/10-timesync \
-    1>/var/log/tor-router/timesync.log \
-    2>/var/log/tor-router/timesync.err
-fi
+# This cronjob corrects the system time while tor-router is running
+
+SYSTEMCTL=$(command -v systemctl 2>/dev/null || true)
+
+NOW=$(date -u --rfc-3339=seconds)
+
+if ! [ -x "$SYSTEMCTL" ]; then
+  echo "[$NOW] Systemd is unavailable" >&2
+elif ! $SYSTEMCTL --quiet is-active tor-router.service; then
+  echo "[$NOW] Tor-router is not running"
+elif ! [ -x /etc/tor-router/tr-pre-up.d/10-timesync ]; then
+  echo "[$NOW] The timesync plugin is disabled"
+else
+  . /etc/tor-router/tr-pre-up.d/10-timesync | sed "s/.*/[$NOW] \0/"
+fi >>/var/log/tor-router/timesync.log 2>>/var/log/tor-router/timesync.err
